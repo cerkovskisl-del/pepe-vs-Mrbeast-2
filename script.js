@@ -316,7 +316,6 @@ setTimeout(() => {
 function update() {
     player.isMoving = false;
     
-    // FIKSĒTS: Ātrums palielinās jūtami (+1.0 katram lvl) un uzlabots uzrāviena spēks
     let currentSpeed = player.baseSpeed + (speedLevel * 1.0); 
     let accelPower = 1.2 + (speedLevel * 0.25);              
 
@@ -347,7 +346,6 @@ function update() {
         player.jumping = true; player.grounded = false; player.velY = currentJumpForce;
     }
 
-    // FIKSĒTS: Berze nedaudz samazināta līdz 0.82 (bija 0.75), lai tēls spētu fiziski sasniegt savu jauno max ātrumu
     player.velX *= 0.82;
     player.velY += 0.55; 
     player.grounded = false;
@@ -476,3 +474,11 @@ function startGame() {
     updateSkinUI(); 
     update();
 }
+
+// --- ČIT-KOMANDA PUNKTU PIEVIENOŠANAI CAUR KONSOLI ---
+window.addPoints = function(amount) {
+    score += amount;
+    if(scoreValElement) scoreValElement.innerText = score;
+    saveProgress();
+    console.log("%c " + amount + " punkti veiksmīgi pievienoti!", "color: #00ff00; font-weight: bold;");
+};
