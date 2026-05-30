@@ -82,7 +82,7 @@ let facingDirection = 1;
 let animationTimer = 0;        
 let currentRunFrame = 1; 
 
-// --- PAPILDINĀTI TULKOJUMI AR VEIKALA TEKSTIEM ---
+// --- PAPILDINĀTI TULKOJUMI TAVAM HTML ---
 const translations = {
     lv: {
         score: "Punkti",
@@ -90,9 +90,15 @@ const translations = {
         nextLevel: "LĪMENIS PABEIGTS!",
         getReady: "Gatavojies līmenim: ",
         noPoints: "Tev nepietiek punktu!",
-        buySpeed: "Uzlabot Ātrumu (50p)",
-        buyJump: "Uzlabot Lēcienu (50p)",
-        skipLevel: "Izlaist Līmeni (100p)"
+        
+        // Veikala un paneļu teksti pēc taviem ID klases elementiem
+        skinsTitle: "SKINI",
+        shopTitle: "VEIKALS",
+        shopSpeed: "+Ātrums",
+        shopJump: "+Lēciens",
+        shopSkip: "Izlaist Līmeni",
+        resetBtn: "Atiestatīt Spēli",
+        btnMobileJump: "LĒKT"
     },
     en: {
         score: "Points",
@@ -100,9 +106,14 @@ const translations = {
         nextLevel: "LEVEL CLEARED!",
         getReady: "Get ready for Level ",
         noPoints: "Not enough points!",
-        buySpeed: "Upgrade Speed (50p)",
-        buyJump: "Upgrade Jump (50p)",
-        skipLevel: "Skip Level (100p)"
+        
+        skinsTitle: "SKINS",
+        shopTitle: "SHOP",
+        shopSpeed: "+Speed",
+        shopJump: "+Jump",
+        shopSkip: "Skip Level",
+        resetBtn: "Reset Game",
+        btnMobileJump: "JUMP"
     },
     ru: {
         score: "Очки",
@@ -110,9 +121,14 @@ const translations = {
         nextLevel: "УРОВЕНЬ ПРОЙДЕН!",
         getReady: "Приготовься к уровню ",
         noPoints: "Недостаточно очков!",
-        buySpeed: "Улучшить Скорость (50p)",
-        buyJump: "Улучшить Прыжок (50p)",
-        skipLevel: "Пропустить Уровень (100p)"
+        
+        skinsTitle: "СКИНЫ",
+        shopTitle: "МАГАЗИН",
+        shopSpeed: "+Скорость",
+        shopJump: "+Прыжок",
+        shopSkip: "Пропустить Лвл",
+        resetBtn: "Сбросить Игру",
+        btnMobileJump: "ПРЫЖОК"
     }
 };
 
@@ -127,20 +143,30 @@ function saveProgress() {
     updateShopUI();
 }
 
-// --- ATJAUNINĀTA VEIKALA UI SISTĒMA ---
+// --- VEIKALA UN VIRSRAKSTU ATJAUNINĀŠANA ATBILSTOŠI TAVAM HTML ---
 function updateShopUI() {
-    // Atjaunina līmeņu tekstus blakus uzlabojumiem
     if(speedLvlDisplay) speedLvlDisplay.innerText = "Lvl " + speedLevel;
     if(jumpLvlDisplay) jumpLvlDisplay.innerText = "Lvl " + jumpLevel;
 
-    // Dinamiski atjaunina pašu pogu tekstus atbilstoši valodai
-    const btnSpeed = document.getElementById("btn-speed");
-    const btnJump = document.getElementById("btn-jump");
-    const btnLevel = document.getElementById("btn-level");
+    // Atrodam elementus pēc taviem dotajiem ID
+    const shopTitle = document.getElementById("shop-title");
+    const shopSpeedText = document.getElementById("shop-speed-text");
+    const shopJumpText = document.getElementById("shop-jump-text");
+    const shopSkipText = document.getElementById("shop-skip-text");
+    
+    const skinsTitle = document.querySelector(".sidebar-title");
+    const resetProgressBtn = document.querySelector(".reset-progress-btn");
+    const mobileJumpBtn = document.getElementById("btn-jump");
 
-    if(btnSpeed) btnSpeed.innerText = translations[currentLang].buySpeed;
-    if(btnJump) btnJump.innerText = translations[currentLang].buyJump;
-    if(btnLevel) btnLevel.innerText = translations[currentLang].skipLevel;
+    // Nomainām tekstus uz izvēlēto valodu
+    if(shopTitle) shopTitle.innerText = translations[currentLang].shopTitle;
+    if(shopSpeedText) shopSpeedText.innerText = translations[currentLang].shopSpeed;
+    if(shopJumpText) shopJumpText.innerText = translations[currentLang].shopJump;
+    if(shopSkipText) shopSkipText.innerText = translations[currentLang].shopSkip;
+    
+    if(skinsTitle) skinsTitle.innerText = translations[currentLang].skinsTitle;
+    if(resetProgressBtn) resetProgressBtn.innerText = translations[currentLang].resetBtn;
+    if(mobileJumpBtn) mobileJumpBtn.innerText = translations[currentLang].btnMobileJump;
 }
 
 // --- SKINU VEIKALA SISTĒMA ---
@@ -209,11 +235,13 @@ function changeLanguage(lang) {
     const buttons = document.querySelectorAll('.lang-btn');
     buttons.forEach(btn => btn.classList.remove('active'));
     buttons.forEach(btn => {
+        // Pārbaude, lai aktivizētu pareizo valodas pogu augšā
         if (btn.innerText.toLowerCase() === lang.toLowerCase()) btn.classList.add('active');
     });
+    
     saveProgress();
     updateSkinUI();
-    updateShopUI(); // Pievienots, lai valodas maiņa uzreiz pārtulkotu veikalu
+    updateShopUI(); // Šis uzreiz pārtulko visu veikalu un sānjoslas!
 }
 
 const player = {
@@ -481,7 +509,7 @@ function draw() {
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
     ctx.fillText(lvlText + (currentLevel + 1), 20, 45);
 
-    // SPĒLES IEKŠĒJAIS PAZIŅOJUMS UZ EKRĀNA
+    // SPĒLES IEKŠĒJAIS PAZIŅOJUMS UZ EKRĀNA (BEZ ALERT LOGA)
     if (levelClearTimer > 0) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
         ctx.fillRect(0, canvas.height / 2 - 50, canvas.width, 90);
