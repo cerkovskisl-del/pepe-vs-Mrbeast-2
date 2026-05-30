@@ -26,9 +26,9 @@ let currentPlatforms = [];
 let currentItems = [];
 let currentBoss = { x: 0, y: 0, width: 45, height: 60 };
 
-// --- ATTĒLU IELĀDE (TAGAD 7 BILDES) ---
+// --- ATTĒLU IELĀDE (KOPĀ 13 BILDES) ---
 let loadedImagesCount = 0;
-const totalImagesNeeded = 7; 
+const totalImagesNeeded = 13; 
 
 function imageLoaded() {
     loadedImagesCount++;
@@ -37,42 +37,42 @@ function imageLoaded() {
     }
 }
 
-const imgPepeIdle = new Image();
-imgPepeIdle.src = 'pepe_idle.png';
-imgPepeIdle.onload = imageLoaded;
-imgPepeIdle.onerror = function() { console.error("Trūkst pepe_idle.png"); imageLoaded(); };
+function loadImg(src) {
+    const img = new Image();
+    img.src = src;
+    img.onload = imageLoaded;
+    img.onerror = function() { console.error("Trūkst attēla: " + src); imageLoaded(); };
+    return img;
+}
 
-const imgPepeRun1 = new Image();
-imgPepeRun1.src = 'pepe_run1.png';
-imgPepeRun1.onload = imageLoaded;
-imgPepeRun1.onerror = function() { console.error("Trūkst pepe_run1.png"); imageLoaded(); };
+// 3 Skini x 3 bildes katram = 9 bildes tēlam
+const skins = {
+    default: {
+        idle: loadImg('pepe_idle.png'),
+        r1: loadImg('pepe_run1.png'),
+        r2: loadImg('pepe_run2.png')
+    },
+    fat: {
+        idle: loadImg('fat_idle.png'),
+        r1: loadImg('fat_run1.png'),
+        r2: loadImg('fat_run2.png')
+    },
+    ninja: {
+        idle: loadImg('ninja_idle.png'),
+        r1: loadImg('ninja_run1.png'),
+        r2: loadImg('ninja_run2.png')
+    }
+};
 
-const imgPepeRun2 = new Image();
-imgPepeRun2.src = 'pepe_run2.png';
-imgPepeRun2.onload = imageLoaded;
-imgPepeRun2.onerror = function() { console.error("Trūkst pepe_run2.png"); imageLoaded(); };
+// Pārējās 4 spēles bildes
+const mrBeastImg = loadImg('mrbeast.png');
+const coinNormalImg = loadImg('coin_normal.png');
+const coinCosmicImg = loadImg('coin_cosmic.png');
+const coinSadImg = loadImg('coin_sad.png');
 
-const mrBeastImg = new Image();
-mrBeastImg.src = 'mrbeast.png';
-mrBeastImg.onload = imageLoaded;
-mrBeastImg.onerror = function() { console.error("Trūkst mrbeast.png"); imageLoaded(); };
-
-// TRĪS DAŽĀDĀS MONĒTAS
-const coinNormalImg = new Image();
-coinNormalImg.src = 'coin_normal.png';
-coinNormalImg.onload = imageLoaded;
-coinNormalImg.onerror = function() { console.error("Trūkst coin_normal.png"); imageLoaded(); };
-
-const coinCosmicImg = new Image();
-coinCosmicImg.src = 'coin_cosmic.png';
-coinCosmicImg.onload = imageLoaded;
-coinCosmicImg.onerror = function() { console.error("Trūkst coin_cosmic.png"); imageLoaded(); };
-
-const coinSadImg = new Image();
-coinSadImg.src = 'coin_sad.png';
-coinSadImg.onload = imageLoaded;
-coinSadImg.onerror = function() { console.error("Trūkst coin_sad.png"); imageLoaded(); };
-
+// --- SKINU LOGIKAS MAINĪGIE ---
+let ownedSkins = JSON.parse(localStorage.getItem("pepe_owned_skins")) || ["default"];
+let currentSkin = localStorage.getItem("pepe_current_skin") || "default";
 
 // --- ANIMĀCIJAS MAINĪGIE ---
 let facingDirection = 1;       
@@ -106,12 +106,68 @@ function saveProgress() {
     localStorage.setItem("pepe_lang", currentLang);
     localStorage.setItem("pepe_speed_lvl", speedLevel);
     localStorage.setItem("pepe_jump_lvl", jumpLevel);
+    localStorage.setItem("pepe_owned_skins", JSON.stringify(ownedSkins));
+    localStorage.setItem("pepe_current_skin", currentSkin);
     updateShopUI();
 }
 
 function updateShopUI() {
     if(speedLvlDisplay) speedLvlDisplay.innerText = "Lvl " + speedLevel;
     if(jumpLvlDisplay) jumpLvlDisplay.innerText = "Lvl " + jumpLevel;
+}
+
+// --- SKINU VEIKALA SISTĒMA ---
+function buySkin(name, price) {
+    if (document.activeElement) document.activeElement.blur();
+    
+    if (ownedSkins.includes(name)) {
+        selectSkin(name);
+    } else {
+        if (score >= price) {
+            score -= price;
+            ownedSkins.push(name);
+            currentSkin = name;
+            if(scoreValElement) scoreValElement.innerText = score;
+            saveProgress();
+            updateSkinUI();
+            clearKeys();
+        } else {
+            alert(translations[currentLang].noPoints);
+            clearKeys();
+        }
+    }
+}
+
+function selectSkin(name) {
+    if (document.activeElement) document.activeElement.blur();
+    if (!ownedSkins.includes(name)) return;
+    
+    currentSkin = name;
+    saveProgress();
+    updateSkinUI();
+    clearKeys();
+}
+
+function updateSkinUI() {
+    const skinNames = ["default", "fat", "ninja"];
+    skinNames.forEach(s => {
+        const btn = document.getElementById("skin-" + s);
+        const status = document.getElementById("status-" + s);
+        
+        if(btn && status) {
+            btn.classList.remove("active", "locked");
+            if (currentSkin === s) {
+                btn.classList.add("active");
+                status.innerText = (currentLang === 'lv') ? "Izvēlēts" : (currentLang === 'en') ? "Selected" : "Выбран";
+            } else if (ownedSkins.includes(s)) {
+                status.innerText = (currentLang === 'lv') ? "Pieejams" : (currentLang === 'en') ? "Equip" : "Надеть";
+            } else {
+                btn.classList.add("locked");
+                if(s === "fat") status.innerText = "500p";
+                if(s === "ninja") status.innerText = "1500p";
+            }
+        }
+    });
 }
 
 function changeLanguage(lang) {
@@ -129,6 +185,7 @@ function changeLanguage(lang) {
         if (btn.innerText.toLowerCase() === lang.toLowerCase()) btn.classList.add('active');
     });
     saveProgress();
+    updateSkinUI();
 }
 
 const player = {
@@ -178,22 +235,21 @@ function generateLevel(lvl) {
         let type = "normal";
         let value = 10;
 
-        // Jo lielāks līmenis (lvl), jo lielāka iespēja Cosmic un mazāka Sad
-        let cosmicChance = 0.05 + (lvl * 0.015); // Sākas ar 5%, ar katru līmeni aug par 1.5%
-        if (cosmicChance > 0.45) cosmicChance = 0.45; // Maksimums 45% iespēja uz Cosmic
+        let cosmicChance = 0.05 + (lvl * 0.015); 
+        if (cosmicChance > 0.45) cosmicChance = 0.45; 
 
-        let sadChance = 0.35 - (lvl * 0.015); // Sākas ar 35%, ar katru līmeni krīt
-        if (sadChance < 0.05) sadChance = 0.05; // Minimums 5% iespēja uz Sad
+        let sadChance = 0.35 - (lvl * 0.015); 
+        if (sadChance < 0.05) sadChance = 0.05; 
 
         if (rand < cosmicChance) {
             type = "cosmic";
-            value = 30; // Cosmic dod visvairāk punktu
+            value = 30; 
         } else if (rand > (1 - sadChance)) {
             type = "sad";
-            value = 3;  // Sad dod vismazāk punktu
+            value = 3;  
         } else {
             type = "normal";
-            value = 10; // Vidējā monēta
+            value = 10; 
         }
 
         currentItems.push({ 
@@ -313,10 +369,7 @@ function update() {
         if (!item.collected && player.x < item.x + item.width && player.x + player.width > item.x &&
             player.y < item.y + item.height && player.y + player.height > item.y) {
             item.collected = true;
-            
-            // PIEVIENO ATTIECCĪGĀS MONĒTAS VĒRTĪBU PIE REZULTĀTA
             score += item.coinValue; 
-            
             if(scoreValElement) scoreValElement.innerText = score; 
             saveProgress(); 
         }
@@ -355,17 +408,15 @@ function draw() {
         ctx.fillStyle = "#00d2ff"; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
     });
 
-    // --- MONĒTU ZĪMĒŠANA ATKARĪBĀ NO TO TIPA ---
+    // Monētas
     currentItems.forEach(item => {
         if (!item.collected) {
-            let activeCoinImg = coinNormalImg; // Noklusējuma variants
-            
+            let activeCoinImg = coinNormalImg; 
             if (item.coinType === "cosmic") {
                 activeCoinImg = coinCosmicImg;
             } else if (item.coinType === "sad") {
                 activeCoinImg = coinSadImg;
             }
-            
             ctx.drawImage(activeCoinImg, item.x - cameraX, item.y, item.width, item.height);
         }
     });
@@ -375,11 +426,12 @@ function draw() {
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 13px Arial";
     ctx.fillText("MrBeast", currentBoss.x - cameraX - 5, currentBoss.y - 8);
 
-    // Pēpe
+    // TĒLA DRĀVĒŠANA AR AKTĪVO SKINU
     ctx.save();
-    let currentImg = imgPepeIdle;
+    let skinSet = skins[currentSkin]; 
+    let currentImg = skinSet.idle;
     if (player.isMoving) {
-        currentImg = (currentRunFrame === 1) ? imgPepeRun1 : imgPepeRun2;
+        currentImg = (currentRunFrame === 1) ? skinSet.r1 : skinSet.r2;
     }
 
     if (facingDirection === -1) {
@@ -407,8 +459,9 @@ function clearSavedProgress() {
 
     localStorage.clear();
     currentLevel = 0; score = 0; speedLevel = 0; jumpLevel = 0;
+    ownedSkins = ["default"]; currentSkin = "default";
     if(scoreValElement) scoreValElement.innerText = score;
-    generateLevel(currentLevel); resetPlayer(); saveProgress();
+    generateLevel(currentLevel); resetPlayer(); saveProgress(); updateSkinUI();
 }
 
 function startGame() {
@@ -416,5 +469,6 @@ function startGame() {
     resetPlayer();
     changeLanguage(currentLang);
     updateShopUI();
+    updateSkinUI(); 
     update();
 }
