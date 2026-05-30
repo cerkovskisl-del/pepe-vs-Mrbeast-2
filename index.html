@@ -16,6 +16,25 @@
 
     <div class="game-wrapper">
         
+        <div class="side-panel skin-sidebar">
+            <h3 class="sidebar-title">SKINI</h3>
+            
+            <button class="skin-btn active" id="skin-default" onclick="selectSkin('default')" tabindex="-1">
+                <div class="skin-name">Parastais</div>
+                <div class="skin-status" id="status-default">Izvēlēts</div>
+            </button>
+
+            <button class="skin-btn locked" id="skin-fat" onclick="buySkin('fat', 500)" tabindex="-1">
+                <div class="skin-name">Fat Pepe</div>
+                <div class="skin-status" id="status-fat">500p</div>
+            </button>
+
+            <button class="skin-btn locked" id="skin-ninja" onclick="buySkin('ninja', 1500)" tabindex="-1">
+                <div class="skin-name">Ninja Pepe</div>
+                <div class="skin-status" id="status-ninja">1500p</div>
+            </button>
+        </div>
+
         <div class="canvas-area">
             <div class="hud">
                 <span id="score-text">Punkti</span>: <span id="score-val">0</span>
@@ -23,7 +42,7 @@
             <canvas id="gameCanvas" width="1000" height="500"></canvas>
         </div>
 
-        <div class="shop-sidebar">
+        <div class="side-panel shop-sidebar">
             <h3 id="shop-title">VEIKALS</h3>
             
             <button class="shop-item-btn" onclick="buyUpgrade(1)" tabindex="-1">
