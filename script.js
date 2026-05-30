@@ -23,8 +23,13 @@ let cameraX = 0;
 // --- REŽĪMA MAINĪGIE ---
 let gameMode = "normal"; // Var būt "normal" vai "parkour"
 let lastParkourX = 260;  
-let lastParkourY = 400; // Sekojam līdzi pēdējam augstumam plūstošai ģenerēšanai
+let lastParkourY = 400; 
 let visitedPlatforms = []; 
+
+// Vizuālie mainīgie unikāliem līmeņiem
+let currentBgColor = "#0b0e14"; 
+let currentPlatformColor = "#2c3e50";
+let currentPlatformTopColor = "#00d2ff";
 
 // --- MAINĪGAIS SPĒLES IEKŠĒJAM PAZIŅOJUMAM ---
 let levelClearTimer = 0; 
@@ -200,52 +205,76 @@ function switchMode(mode) {
     updateShopUI();
 }
 
-// --- PLŪSTOŠAIS UN KONTROLĒTAIS ĢENERATORS ---
+// --- DINAMISKAIS UN ATŠĶIRĪGAIS LĪMEŅU ĢENERATORS ---
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
     visitedPlatforms = [];
     cameraX = 0; 
 
-    // Sākuma drošā platforma
+    // Sākuma platforma
     currentPlatforms.push({ id: 0, x: 0, y: 440, width: 200, height: 25 });
     visitedPlatforms.push(0); 
 
     if (gameMode === "normal") {
+        // 1. VIZUĀLĀS GALAXY ZONAS (Mainās krāsas ik pēc 3 līmeņiem)
+        let zone = Math.floor(lvl / 3) % 4;
+        if (zone === 0) { currentBgColor = "#0b0e14"; currentPlatformColor = "#2c3e50"; currentPlatformTopColor = "#00d2ff"; } // Klasiskais kosmoss
+        else if (zone === 1) { currentBgColor = "#1a0b2e"; currentPlatformColor = "#4a154b"; currentPlatformTopColor = "#ff007f"; } // Violetā miglāja zona
+        else if (zone === 2) { currentBgColor = "#051c14"; currentPlatformColor = "#113f2a"; currentPlatformTopColor = "#00ff66"; } // Zaļo asteroīdu lauks
+        else { currentBgColor = "#240909"; currentPlatformColor = "#5c1d1d"; currentPlatformTopColor = "#ffcc00"; } // Sarkanā giganta saule
+
         let capLevel = Math.min(lvl, 40);
         let difficultyFactor = capLevel / 40; 
         
-        let numPlatforms = 8 + Math.floor(lvl * 0.6);
-        if (numPlatforms > 35) numPlatforms = 35; 
-
-        // Platformu platums samazinās prātīgi, nevis par traku
-        let platWidth = 160 - (difficultyFactor * 50); 
-        if (platWidth < 100) platWidth = 100; 
+        let numPlatforms = 8 + Math.floor(lvl * 0.5);
+        if (numPlatforms > 30) numPlatforms = 30; 
 
         let startX = 250;
-        let lastNormalY = 400; // Izmantojam ķēdes loģiku arī parastajos līmeņos
+        let lastNormalY = 400; 
+
+        // 2. ATŠĶIRĪGI STRUKTŪRAS TIPI ATKARĪBĀ NO LĪMEŅA
+        let levelType = lvl % 3; // Var būt 0, 1 vai 2
 
         for (let i = 0; i < numPlatforms; i++) {
-            // Kontrolēta atstarpe (maksimālā robeža sabalansēta ar lēciena spēku)
-            let gapX = 100 + (difficultyFactor * 45) + (Math.sin(i) * 15);
-            if (gapX > 155) gapX = 155; 
+            let platWidth = 150 - (difficultyFactor * 45);
+            if (platWidth < 100) platWidth = 100;
 
-            // Plūstoša augstuma maiņa (iepriekšējais Y +/- neliels solis)
-            let changeY = (Math.sin(i * 1.5) * 45) - (difficultyFactor * 5); 
-            let platY = lastNormalY + changeY;
+            let gapX = 100 + (difficultyFactor * 40);
+            let platY = lastNormalY;
 
-            // Ekstrēmo malu ierobežojumi
+            if (levelType === 0) {
+                // TIPS 0: "ZIG-ZAG" Viļņi (Lēkā augšā / lejā plūstoši)
+                let changeY = (i % 2 === 0) ? -50 : 50;
+                platY = lastNormalY + changeY;
+            } 
+            else if (levelType === 1) {
+                // TIPS 1: "KĀPNES AUGŠUP" (Trase iet uz augšu un beigās nokrīt)
+                platY = lastNormalY - 25;
+                if (platY < 190) platY = 380; // Reset uz leju, ja par augstu
+            } 
+            else {
+                // TIPS 2: "MIKSĒTAIS" (Pamīšus viena gara un viena maza platforma)
+                if (i % 2 === 0) {
+                    platWidth += 40; // Īpaši gara platforma
+                    platY = lastNormalY + 20;
+                } else {
+                    platWidth -= 25; // Īpaši maza un augsta platforma
+                    platY = lastNormalY - 45;
+                }
+            }
+
+            // Drošības robežas augstumam
             if (platY < 180) platY = 180;
             if (platY > 430) platY = 430;
 
             let platX = startX;
             currentPlatforms.push({ id: i + 1, x: platX, y: platY, width: platWidth, height: 18 });
             
-            // Atjaunojam vērtības nākamajam ciklam
             startX += platWidth + gapX;
             lastNormalY = platY;
 
-            // Monētas virs platformas
+            // Monētu izvietošana
             let rand = Math.random();
             let type = "normal"; let value = 10;
             let cosmicChance = Math.min(0.05 + (lvl * 0.01), 0.35); 
@@ -262,12 +291,17 @@ function generateLevel(lvl) {
 
         // Finiša platforma
         let finalPlatX = startX + 20;
-        currentPlatforms.push({ id: currentPlatforms.length, x: finalPlatX, y: 340, width: 150, height: 25 });
+        let finalPlatY = 330;
+        currentPlatforms.push({ id: currentPlatforms.length, x: finalPlatX, y: finalPlatY, width: 150, height: 25 });
         currentBoss.x = finalPlatX + 50;
-        currentBoss.y = 340 - currentBoss.height;
+        currentBoss.y = finalPlatY - currentBoss.height;
 
     } else {
-        // PARKOUR REŽĪMS: Atiestatām plūstošos sākuma punktus
+        // PARKOUR REŽĪMS: Neitrālas kosmosa krāsas
+        currentBgColor = "#0b0e14";
+        currentPlatformColor = "#2c3e50";
+        currentPlatformTopColor = "#00d2ff";
+
         lastParkourX = 260;
         lastParkourY = 400;
         for (let i = 0; i < 12; i++) {
@@ -276,19 +310,14 @@ function generateLevel(lvl) {
     }
 }
 
-// PLŪSTOŠĀ PARKOUR ĢENERĀCIJAS FUNKCIJA
 function addSingleParkourPlatform() {
     let nextId = currentPlatforms.length;
-    
-    // Stabilas, izlēcamas vērtības
     let platWidth = 115 + Math.random() * 45; 
     let gapX = 100 + Math.random() * 45;      
 
-    // ĶĒDES AUGSTUMS: Jaunā platforma ir tikai max +/- 55px no iepriekšējās
-    let offsetY = (Math.random() * 110) - 55; 
+    let offsetY = (Math.random() * 100) - 50; 
     let platY = lastParkourY + offsetY;
 
-    // Neļaujam platformām aiziet pārāk augstu debesīs vai par zemu ekrānā
     if (platY < 180) platY = 180 + Math.random() * 30;
     if (platY > 430) platY = 430 - Math.random() * 30;
 
@@ -300,7 +329,6 @@ function addSingleParkourPlatform() {
         height: 18
     });
 
-    // Saglabājam datus, lai nākamā platforma būtu plūstoša no šīs
     lastParkourX += platWidth + gapX;
     lastParkourY = platY;
 }
@@ -468,15 +496,19 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = "#0b0e14"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // DINAMISKĀ FONA KRĀSA
+    ctx.fillStyle = currentBgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Zvaigznes fonā
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(100 - cameraX*0.1, 80, 2, 2); ctx.fillRect(300 - cameraX*0.1, 50, 3, 3);
     ctx.fillRect(550 - cameraX*0.1, 120, 2, 2); ctx.fillRect(700 - cameraX*0.1, 200, 3, 3);
     ctx.fillRect(850 - cameraX*0.1, 70, 2, 2);
 
+    // DINAMISKĀS PLATFORMU KRĀSAS
     currentPlatforms.forEach(plat => {
-        ctx.fillStyle = "#2c3e50"; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
-        ctx.fillStyle = "#00d2ff"; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
+        ctx.fillStyle = currentPlatformColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
+        ctx.fillStyle = currentPlatformTopColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
     });
 
     if (gameMode === "normal") {
