@@ -7,6 +7,21 @@ const controlsTextElement = document.getElementById("controls-text");
 let score = 0;
 let currentLang = 'lv';
 
+// --- ATTĒLU IELĀDE ---
+const pepeIdle = new Image();
+pepeIdle.src = 'pepe_idle.png'; // Kad stāv uz vietas
+
+const pepeRun1 = new Image();
+pepeRun1.src = 'pepe_run1.png'; // Skriešanas 1. kadrs
+
+const pepeRun2 = new Image();
+pepeRun2.src = 'pepe_run2.png'; // Skriešanas 2. kadrs
+
+// --- ANIMĀCIJAS MAINĪGIE ---
+let facingDirection = 1;       // 1 = pa labi, -1 = pa kreisi
+let animationTimer = 0;        // Skaita kadrus, lai zinātu, kad mainīt bildi
+let currentRunFrame = 1;       // Kurš skriešanas kadrs pašlaik ir aktīvs (1 vai 2)
+
 const translations = {
     lv: {
         score: "Punkti",
@@ -33,14 +48,14 @@ function changeLanguage(lang) {
     const buttons = document.querySelectorAll('.lang-btn');
     buttons.forEach(btn => btn.classList.remove('active'));
     
-    // Izmantojam event, lai atrastu nospiesto pogu
     window.event.target.classList.add('active');
 }
 
 const player = {
-    x: 50, y: 300, width: 30, height: 40,
+    x: 50, y: 300, width: 40, height: 50,
     speed: 5, velX: 0, velY: 0,
-    jumping: false, grounded: false
+    jumping: false, grounded: false,
+    isMoving: false
 };
 
 const keys = {};
@@ -65,8 +80,41 @@ window.addEventListener("keydown", (e) => { keys[e.key] = true; });
 window.addEventListener("keyup", (e) => { keys[e.key] = false; });
 
 function update() {
-    if (keys["ArrowRight"] || keys["d"] || keys["D"]) { if (player.velX < player.speed) player.velX++; }
-    if (keys["ArrowLeft"] || keys["a"] || keys["A"]) { if (player.velX > -player.speed) player.velX--; }
+    player.isMoving = false;
+
+    // Kustība pa labi
+    if (keys["ArrowRight"] || keys["d"] || keys["D"]) { 
+        if (player.velX < player.speed) player.velX++; 
+        player.isMoving = true;
+        facingDirection = 1; 
+    }
+    // Kustība pa kreisi
+    if (keys["ArrowLeft"] || keys["a"] || keys["A"]) { 
+        if (player.velX > -player.speed) player.velX--; 
+        player.isMoving = true;
+        facingDirection = -1; 
+    }
+    
+    if (Math.abs(player.velX) > 0.2) {
+        player.isMoving = true;
+    }
+
+    // Animācijas loģika: Ja Pepe skrien, skaitām laiku un mainām kadrus
+    if (player.isMoving) {
+        animationTimer++;
+        if (animationTimer >= 10) { // Ik pēc 10 kadriem (nomaini uz mazāku skaitli, ja gribi ātrāku skriešanu)
+            if (currentRunFrame === 1) {
+                currentRunFrame = 2;
+            } else {
+                currentRunFrame = 1;
+            }
+            animationTimer = 0; // Atiestata taimeri
+        }
+    } else {
+        animationTimer = 0;
+        currentRunFrame = 1; // Ja apstājas, sagatavojas pirmajam kadram
+    }
+
     if ((keys["ArrowUp"] || keys["w"] || keys["W"] || keys[" "]) && !player.jumping && player.grounded) {
         player.jumping = true;
         player.grounded = false;
@@ -118,9 +166,18 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = "#a1dbf7";
+    // Kosmosa fons
+    ctx.fillStyle = "#0b0e14";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Zvaigznes
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(100, 80, 2, 2);
+    ctx.fillRect(300, 50, 3, 3);
+    ctx.fillRect(550, 120, 2, 2);
+    ctx.fillRect(700, 70, 3, 3);
+
+    // Platformas
     platforms.forEach(plat => {
         ctx.fillStyle = "#795548";
         ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
@@ -128,6 +185,7 @@ function draw() {
         ctx.fillRect(plat.x, plat.y, plat.width, 4);
     });
 
+    // Monētas
     ctx.fillStyle = "#FFD700";
     items.forEach(item => {
         if (!item.collected) {
@@ -137,17 +195,34 @@ function draw() {
         }
     });
 
+    // MrBeast
     ctx.fillStyle = "#002fa7";
     ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 12px Arial";
     ctx.fillText("MrBeast", boss.x - 5, boss.y - 8);
 
-    ctx.fillStyle = "#32CD32";
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-    ctx.fillStyle = "#000000";
-    ctx.font = "bold 12px Arial";
-    ctx.fillText("Pepe", player.x, player.y - 8);
+    // --- PEPE ZĪMĒŠANA AR MULTI-KADRU ANIMĀCIJU ---
+    ctx.save();
+
+    // Attēla izvēle: ja stāv, tad pepeIdle. Ja skrien, skatās kurš kadrs aktīvs
+    let currentImg;
+    if (player.isMoving) {
+        currentImg = (currentRunFrame === 1) ? pepeRun1 : pepeRun2;
+    } else {
+        currentImg = pepeIdle;
+    }
+
+    // Pagriešana spoguļattēlā, ja iet pa kreisi
+    if (facingDirection === -1) {
+        ctx.translate(player.x + player.width, player.y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(currentImg, 0, 0, player.width, player.height);
+    } else {
+        ctx.drawImage(currentImg, player.x, player.y, player.width, player.height);
+    }
+
+    ctx.restore();
 }
 
 function resetPlayer() {
