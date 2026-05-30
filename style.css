@@ -39,10 +39,11 @@ body {
     color: #05070a;
 }
 
-/* Galvenais izkārtojums: Ekrāns + Veikals sānos */
+/* Galvenais izkārtojums: Skini kreisajā pusē + Ekrāns vidū + Veikals labajā pusē */
 .game-wrapper {
     display: flex;
     flex-direction: row;
+    align-items: flex-start;
     gap: 15px;
     max-width: 100%;
 }
@@ -61,7 +62,7 @@ body {
     z-index: 10;
 }
 
-/* Lielāks spēles ekrāns */
+/* Spēles ekrāns */
 canvas {
     background: #0b0e14;
     border: 4px solid #00d2ff;
@@ -72,8 +73,8 @@ canvas {
     height: auto;
 }
 
-/* SĀNU VEIKALS */
-.shop-sidebar {
+/* KOPĒJAIS SĀNU PANELA STILS (Gan Skiniem, gan Veikalam) */
+.side-panel {
     width: 220px;
     background: #111827;
     border: 4px solid #00d2ff;
@@ -84,7 +85,7 @@ canvas {
     gap: 12px;
 }
 
-.shop-sidebar h3 {
+.side-panel h3, .shop-sidebar h3 {
     text-align: center;
     color: #00d2ff;
     font-size: 18px;
@@ -94,7 +95,8 @@ canvas {
     padding-bottom: 8px;
 }
 
-.shop-item-btn {
+/* VEIKALA UN SKINU POGU PAMATA STILI */
+.shop-item-btn, .skin-btn {
     background: #1f2937;
     border: 2px solid #374151;
     border-radius: 6px;
@@ -106,14 +108,15 @@ canvas {
     align-items: center;
     gap: 4px;
     transition: 0.2s;
+    width: 100%;
 }
 
-.shop-item-btn:hover {
+.shop-item-btn:hover, .skin-btn:hover {
     border-color: #00d2ff;
     background: #2563eb;
 }
 
-.shop-item-name {
+.shop-item-name, .skin-name {
     font-weight: bold;
     font-size: 14px;
 }
@@ -123,7 +126,7 @@ canvas {
     color: #9ca3af;
 }
 
-.shop-item-price {
+.shop-item-price, .skin-status {
     font-size: 13px;
     color: #ffd700;
     font-weight: bold;
@@ -133,6 +136,27 @@ canvas {
     margin-top: 2px;
 }
 
+/* SKINA POGU ĪPAŠIE STILI (Aktīvs un Bloķēts) */
+.skin-btn.active {
+    border-color: #00ff00;
+    background: #064e3b;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+}
+
+.skin-btn.active:hover {
+    background: #064e3b; /* Neļauj pārkrāsoties zilam, kad uziet ar peli */
+    border-color: #00ff00;
+}
+
+.skin-btn.active .skin-status {
+    color: #00ff00;
+}
+
+.skin-btn.locked {
+    opacity: 0.85;
+}
+
+/* Uzlabojumu veikala īpašās pogas */
 .skip-btn:hover {
     background: #059669;
 }
@@ -146,6 +170,12 @@ canvas {
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
+    width: 100%;
+    transition: 0.2s;
+}
+
+.reset-progress-btn:hover {
+    background: #b91c1c;
 }
 
 /* MOBILĀS POGAS */
@@ -170,7 +200,7 @@ canvas {
     border-radius: 12px;
     font-size: 28px;
     padding: 15px 30px;
-    active-background: #00d2ff;
+    cursor: pointer;
 }
 
 #btn-jump {
@@ -190,25 +220,31 @@ canvas {
 /* RESPONSIVE: JA ATVER NO TELEFONA */
 @media (max-width: 900px) {
     .game-wrapper {
-        flex-direction: column; /* Uz telefona veikals būs zem spēles */
+        flex-direction: column; /* Uz telefona veikali būs zem spēles ekrāna */
         align-items: center;
     }
-    .shop-sidebar {
+    
+    .side-panel {
         width: 100%;
         max-width: 500px;
-        flex-direction: row; /* Veikala pogas izvietosies rindā */
+        flex-direction: row; /* Veikalu pogas izvietosies rindā horizontalā rāmī */
         flex-wrap: wrap;
     }
-    .shop-item-btn {
+    
+    .shop-item-btn, .skin-btn {
         flex: 1;
-        min-width: 100px;
+        min-width: 110px;
     }
+    
     .reset-progress-btn {
         width: 100%;
+        margin-top: 5px;
     }
+    
     .mobile-controls {
-        display: flex; /* Parādām pogas uz telefona */
+        display: flex; /* Parādām skārienpogas uz telefona */
     }
+    
     .controls-info {
         display: none; /* Datora info teksts telefonā nav vajadzīgs */
     }
