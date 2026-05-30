@@ -62,12 +62,12 @@
                 <div class="shop-item-price">50p</div>
             </button>
 
-            <button class="shop-item-btn skip-btn" id="btn-skip-container" onclick="buyUpgrade(3)" tabindex="-1">
+            <button class="shop-item-btn" onclick="buyUpgrade(3)" tabindex="-1">
                 <div class="shop-item-name" id="shop-skip-text">Izlaist Līmeni</div>
                 <div class="shop-item-price">100p</div>
             </button>
 
-            <button class="reset-progress-btn" onclick="clearSavedProgress()" tabindex="-1">Reset Game</button>
+            <button class="reset-progress-btn" id="btn-reset-game" onclick="clearSavedProgress()" tabindex="-1">Reset Game</button>
         </div>
     </div>
 
@@ -84,5 +84,7 @@
     </div>
 
     <script src="script.js"></script>
+
+    <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
