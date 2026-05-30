@@ -9,7 +9,7 @@ const jumpLvlDisplay = document.getElementById("jump-lvl-display");
 
 // --- PROGRESSA IELĀDE NO LOCALSTORAGE ---
 let score = parseInt(localStorage.getItem("pepe_score")) || 0;
-let currentLevel = parseInt(localStorage.getItem("pepe_level")) || 0; // Sākas no 0 (vizuāli 1. līmenis)
+let currentLevel = parseInt(localStorage.getItem("pepe_level")) || 0; 
 let currentLang = localStorage.getItem("pepe_lang") || 'lv';
 
 let speedLevel = parseInt(localStorage.getItem("pepe_speed_lvl")) || 0;
@@ -26,9 +26,9 @@ let currentPlatforms = [];
 let currentItems = [];
 let currentBoss = { x: 0, y: 0, width: 45, height: 60 };
 
-// --- ATTĒLU IELĀDE ---
+// --- ATTĒLU IELĀDE (TAGAD 7 BILDES) ---
 let loadedImagesCount = 0;
-const totalImagesNeeded = 4;
+const totalImagesNeeded = 7; 
 
 function imageLoaded() {
     loadedImagesCount++;
@@ -56,6 +56,23 @@ const mrBeastImg = new Image();
 mrBeastImg.src = 'mrbeast.png';
 mrBeastImg.onload = imageLoaded;
 mrBeastImg.onerror = function() { console.error("Trūkst mrbeast.png"); imageLoaded(); };
+
+// TRĪS DAŽĀDĀS MONĒTAS
+const coinNormalImg = new Image();
+coinNormalImg.src = 'coin_normal.png';
+coinNormalImg.onload = imageLoaded;
+coinNormalImg.onerror = function() { console.error("Trūkst coin_normal.png"); imageLoaded(); };
+
+const coinCosmicImg = new Image();
+coinCosmicImg.src = 'coin_cosmic.png';
+coinCosmicImg.onload = imageLoaded;
+coinCosmicImg.onerror = function() { console.error("Trūkst coin_cosmic.png"); imageLoaded(); };
+
+const coinSadImg = new Image();
+coinSadImg.src = 'coin_sad.png';
+coinSadImg.onload = imageLoaded;
+coinSadImg.onerror = function() { console.error("Trūkst coin_sad.png"); imageLoaded(); };
+
 
 // --- ANIMĀCIJAS MAINĪGIE ---
 let facingDirection = 1;       
@@ -98,7 +115,6 @@ function updateShopUI() {
 }
 
 function changeLanguage(lang) {
-    // NOŅEMAM FOKUSU NO VALODAS POGĀM
     if (document.activeElement) {
         document.activeElement.blur();
     }
@@ -123,40 +139,33 @@ const player = {
 
 function clearKeys() { keys = {}; }
 
-// --- JAUNS BEZGALĪGS LĪMEŅU ĢENERATORS ---
+// --- BEZGALĪGS LĪMEŅU ĢENERATORS AR VEIKSMES TARIFIEM ---
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
     cameraX = 0; 
 
-    // Pirmā starta platforma
     currentPlatforms.push({ x: 0, y: 440, width: 200, height: 25 });
 
-    // Sarežģītības koeficients, kas aug līdz 40. līmenim un tad nostabilizējas, lai spēli joprojām varētu iziet
     let capLevel = Math.min(lvl, 40);
     let difficultyFactor = capLevel / 40;
 
-    // Platformu skaits pieaug līdz ar katru līmeni (līmeņi kļūst garāki)
     let numPlatforms = 7 + Math.floor(lvl / 2);
-    if (numPlatforms > 35) numPlatforms = 35; // Ierobežojam maksimālo garumu, lai neapniktu viens līmenis
+    if (numPlatforms > 35) numPlatforms = 35; 
 
-    // Platformas kļūst šaurākas
-    let platWidth = 180 - (difficultyFactor * 85); // No 180px nokrītas līdz 95px
+    let platWidth = 180 - (difficultyFactor * 85); 
     if (platWidth < 95) platWidth = 95; 
 
     let startX = 260;
     let startY = 400;
 
     for (let i = 0; i < numPlatforms; i++) {
-        // Atstarpes starp platformām palielinās
         let gapX = 90 + (difficultyFactor * 75) + (Math.sin(i) * 15); 
         if (gapX > 175) gapX = 175; 
 
-        // Platformu augstumu viļņošanās
         let wave = Math.sin(i + lvl) * (60 + (difficultyFactor * 25)); 
         let platY = startY + wave - (difficultyFactor * i * 4);
 
-        // Drošības robežas, lai platformas neizietu no ekrāna augšas/apakšas
         if (platY < 160) platY = 160;
         if (platY > 450) platY = 430;
 
@@ -164,11 +173,40 @@ function generateLevel(lvl) {
 
         currentPlatforms.push({ x: platX, y: platY, width: platWidth, height: 18 });
         
-        // Pievienojam monētu virs platformas
-        currentItems.push({ x: platX + (platWidth / 2) - 10, y: platY - 35, width: 20, height: 20, collected: false });
+        // --- DINAMISKA MONĒTU TIPA NOTEIKŠANA ---
+        let rand = Math.random();
+        let type = "normal";
+        let value = 10;
+
+        // Jo lielāks līmenis (lvl), jo lielāka iespēja Cosmic un mazāka Sad
+        let cosmicChance = 0.05 + (lvl * 0.015); // Sākas ar 5%, ar katru līmeni aug par 1.5%
+        if (cosmicChance > 0.45) cosmicChance = 0.45; // Maksimums 45% iespēja uz Cosmic
+
+        let sadChance = 0.35 - (lvl * 0.015); // Sākas ar 35%, ar katru līmeni krīt
+        if (sadChance < 0.05) sadChance = 0.05; // Minimums 5% iespēja uz Sad
+
+        if (rand < cosmicChance) {
+            type = "cosmic";
+            value = 30; // Cosmic dod visvairāk punktu
+        } else if (rand > (1 - sadChance)) {
+            type = "sad";
+            value = 3;  // Sad dod vismazāk punktu
+        } else {
+            type = "normal";
+            value = 10; // Vidējā monēta
+        }
+
+        currentItems.push({ 
+            x: platX + (platWidth / 2) - 12, 
+            y: platY - 35, 
+            width: 24, 
+            height: 24, 
+            collected: false,
+            coinType: type,
+            coinValue: value
+        });
     }
 
-    // Pēdējā platforma ar MrBeast
     let lastPlat = currentPlatforms[currentPlatforms.length - 1];
     let finalPlatX = lastPlat.x + lastPlat.width + 100;
     
@@ -178,7 +216,6 @@ function generateLevel(lvl) {
 }
 
 function buyUpgrade(type) {
-    // PILNĪBĀ NOŅEMAM FOKUSU NO VEIKALA POGĀM
     if (document.activeElement) {
         document.activeElement.blur();
     }
@@ -195,7 +232,6 @@ function buyUpgrade(type) {
     }
     if (type === 3) {
         if (score >= 100) {
-            // Bezgalīgajā režīmā līmeņa izlaišanai nav limita
             score -= 100; currentLevel++; if(scoreValElement) scoreValElement.innerText = score; saveProgress();
             alert(translations[currentLang].nextLevel + (currentLevel + 1)); clearKeys();
             generateLevel(currentLevel); resetPlayer();
@@ -206,7 +242,6 @@ function buyUpgrade(type) {
 window.addEventListener("keydown", (e) => { keys[e.key] = true; });
 window.addEventListener("keyup", (e) => { keys[e.key] = false; });
 
-// Mobilā vadība
 setTimeout(() => {
     const btnLeft = document.getElementById("btn-left");
     const btnRight = document.getElementById("btn-right");
@@ -277,14 +312,19 @@ function update() {
     currentItems.forEach(item => {
         if (!item.collected && player.x < item.x + item.width && player.x + player.width > item.x &&
             player.y < item.y + item.height && player.y + player.height > item.y) {
-            item.collected = true; score += 10; if(scoreValElement) scoreValElement.innerText = score; saveProgress(); 
+            item.collected = true;
+            
+            // PIEVIENO ATTIECCĪGĀS MONĒTAS VĒRTĪBU PIE REZULTĀTA
+            score += item.coinValue; 
+            
+            if(scoreValElement) scoreValElement.innerText = score; 
+            saveProgress(); 
         }
     });
 
     if (player.x < currentBoss.x + currentBoss.width && player.x + player.width > currentBoss.x &&
         player.y < currentBoss.y + currentBoss.height && player.y + player.height > currentBoss.y) {
         
-        // PĀREJA UZ NĀKAMO LĪMENI BEZ IEROBEŽOJUMIEM
         currentLevel++; 
         saveProgress(); 
         alert(translations[currentLang].nextLevel + (currentLevel + 1));
@@ -315,11 +355,18 @@ function draw() {
         ctx.fillStyle = "#00d2ff"; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
     });
 
-    // Monētas
-    ctx.fillStyle = "#FFD700";
+    // --- MONĒTU ZĪMĒŠANA ATKARĪBĀ NO TO TIPA ---
     currentItems.forEach(item => {
         if (!item.collected) {
-            ctx.beginPath(); ctx.arc(item.x + item.width/2 - cameraX, item.y + item.height/2, item.width/2, 0, Math.PI * 2); ctx.fill();
+            let activeCoinImg = coinNormalImg; // Noklusējuma variants
+            
+            if (item.coinType === "cosmic") {
+                activeCoinImg = coinCosmicImg;
+            } else if (item.coinType === "sad") {
+                activeCoinImg = coinSadImg;
+            }
+            
+            ctx.drawImage(activeCoinImg, item.x - cameraX, item.y, item.width, item.height);
         }
     });
 
@@ -343,7 +390,7 @@ function draw() {
     }
     ctx.restore();
 
-    // UI Līmeņa teksts (tagad rāda tīru skaitli bez "/ 30")
+    // UI Līmeņa teksts
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 18px Arial";
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
     ctx.fillText(lvlText + (currentLevel + 1), 20, 45);
@@ -354,7 +401,6 @@ function resetPlayer() {
 }
 
 function clearSavedProgress() {
-    // NOŅEMAM FOKUSU NO RESET POGAS
     if (document.activeElement) {
         document.activeElement.blur();
     }
