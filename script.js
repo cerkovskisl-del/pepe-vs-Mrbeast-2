@@ -22,45 +22,58 @@ scoreValElement.innerText = score;
 const TOTAL_LEVELS = 30; 
 let cameraX = 0;
 
-// --- ATTĒLU IELĀDE ---
-const pepeIdle = new Image();
-pepeIdle.src = 'pepe_idle.png';
-const pepeRun1 = new Image();
-pepeRun1.src = 'pepe_run1.png';
-const pepeRun2 = new Image();
-pepeRun2.src = 'pepe_run2.png';
+// --- ATTĒLU IELĀDE AR DROŠĪBAS KONTROLI ---
+let loadedImagesCount = 0;
+const totalImagesNeeded = 2; // Pepe spritesheet un MrBeast attēls
+
+function imageLoaded() {
+    loadedImagesCount++;
+    if (loadedImagesCount === totalImagesNeeded) {
+        // Tikai tad, kad abi attēli ir 100% ielādēti, palaidīsies spēle
+        startGame();
+    }
+}
+
+// 1. Pepe animāciju lapa (spritesheet)
+const pepeSpritesheet = new Image();
+pepeSpritesheet.src = 'pepe_spritesheet.png'; // Pārliecinies, ka tavs spritesheet fails saucas šādi
+pepeSpritesheet.onload = imageLoaded;
+pepeSpritesheet.onerror = function() {
+    console.error("Kļūda: Nevarēja ielādēt 'pepe_spritesheet.png'. Pārbaudi faila nosaukumu un mapi!");
+};
+
+// 2. MrBeast attēls
 const mrBeastImg = new Image();
-mrBeastImg.src = 'mrbeast.png'; 
+mrBeastImg.src = 'mrbeast.png';
+mrBeastImg.onload = imageLoaded;
+mrBeastImg.onerror = function() {
+    console.error("Kļūda: Nevarēja ielādēt 'mrbeast.png'. Pārbaudi faila nosaukumu un mapi!");
+};
+
 
 // --- ANIMĀCIJAS MAINĪGIE ---
 let facingDirection = 1;       
 let animationTimer = 0;        
-let currentRunFrame = 1;       
+let currentRunFrame = 0; // Kadra indekss rindā (0, 1, 2, 3...)
 
 const translations = {
     lv: {
         score: "Punkti",
         controls: "Vadība: Bultiņas/WASD = Kustība | Atstarpe = Lēkt || Telefonā izmanto pogas apakšā!",
         nextLevel: "Līmenis pabeigts! Progres saglabāts. Gatavojies līmenim: ",
-        win: "Apsveicu! Tu izgāji visus 30 līmeņus! Kopējie punkti: ",
-        noPoints: "Tev nepietiek punktu!",
-        bought: "Nopirkts!"
+        win: "Apsveicu! Tu izgāji visus 30 līmeņus! Kopējie punkti: "
     },
     en: {
         score: "Points",
         controls: "Controls: Arrows/WASD = Move | Space = Jump || On mobile use buttons below!",
         nextLevel: "Level cleared! Progress saved. Get ready for Level ",
-        win: "Congratulations! You beat all 30 levels! Total points: ",
-        noPoints: "Not enough points!",
-        bought: "Purchased!"
+        win: "Congratulations! You beat all 30 levels! Total points: "
     },
     ru: {
         score: "Очки",
         controls: "Управление: Стрелки/WASD = Бег | Пробел = Прыжок || На телефоне жми кнопки снизу!",
         nextLevel: "Уровень пройден! Прогресс сохранен! Приготовься к уровню ",
-        win: "Поздравляем! Ты прошёл все 30 уровней! Всего очков: ",
-        noPoints: "Недостаточно очков!",
-        bought: "Куплено!"
+        win: "Поздравляем! Ты прошёл все 30 уровней! Всего очков: "
     }
 };
 
@@ -73,10 +86,9 @@ function saveProgress() {
     updateShopUI();
 }
 
-// Atjaunojam ciparus uz veikala pogām mājaslapā
 function updateShopUI() {
-    speedLvlDisplay.innerText = "Lvl " + speedLevel;
-    jumpLvlDisplay.innerText = "Lvl " + jumpLevel;
+    if(speedLvlDisplay) speedLvlDisplay.innerText = "Lvl " + speedLevel;
+    if(jumpLvlDisplay) jumpLvlDisplay.innerText = "Lvl " + jumpLevel;
 }
 
 function changeLanguage(lang) {
@@ -93,29 +105,29 @@ function changeLanguage(lang) {
     saveProgress();
 }
 
-// Pielāgoti spēlētāja izmēri lielākam ekrānam
 const player = {
     x: 60, y: 200, width: 45, height: 60,
     baseSpeed: 6,
-    baseJump: -13, // Mazliet palielināts spēks lielākam ekrānam
+    baseJump: -13, 
     velX: 0, velY: 0,
     jumping: false, grounded: false,
     isMoving: false
 };
 
 let keys = {};
+let currentPlatforms = [];
+let currentItems = [];
+let currentBoss = { x: 0, y: 0, width: 45, height: 60 };
 
 function clearKeys() {
     keys = {};
 }
 
-// --- JAUNS LĪMEŅU ĢENERATORS LIELĀKAM EKRĀNAM (1000x500) ---
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
     cameraX = 0; 
 
-    // Starta zeme
     currentPlatforms.push({ x: 0, y: 440, width: 200, height: 25 });
 
     let difficultyFactor = lvl / TOTAL_LEVELS;
@@ -164,27 +176,24 @@ function generateLevel(lvl) {
         height: 25
     });
 
-    currentBoss.width = 45;
-    currentBoss.height = 60;
     currentBoss.x = finalPlatX + 45;
     currentBoss.y = 320 - currentBoss.height;
 }
 
-// --- FUNKCIJA, KO IZSAUC VEIKALA POGAS UZ KLIKŠĶA ---
 function buyUpgrade(type) {
-    if (type === 1) { // Ātrums
+    if (type === 1) {
         if (score >= 50) {
             score -= 50; speedLevel++; scoreValElement.innerText = score; saveProgress();
-            alert(translations[currentLang].bought + " (+Ātrums)"); clearKeys();
+            clearKeys();
         } else { alert(translations[currentLang].noPoints); clearKeys(); }
     }
-    if (type === 2) { // Lēciens
+    if (type === 2) {
         if (score >= 50) {
             score -= 50; jumpLevel++; scoreValElement.innerText = score; saveProgress();
-            alert(translations[currentLang].bought + " (+Lēciens)"); clearKeys();
+            clearKeys();
         } else { alert(translations[currentLang].noPoints); clearKeys(); }
     }
-    if (type === 3) { // Izlaist Lvl
+    if (type === 3) {
         if (score >= 100) {
             if (currentLevel < TOTAL_LEVELS - 1) {
                 score -= 100; currentLevel++; scoreValElement.innerText = score; saveProgress();
@@ -195,26 +204,18 @@ function buyUpgrade(type) {
     }
 }
 
-// Datora tastatūra
-window.addEventListener("keydown", (e) => { 
-    keys[e.key] = true; 
-    // Saglabājam arī veco ciparu pogu sistēmu datoram drošībai
-    if (e.key === "1") buyUpgrade(1);
-    if (e.key === "2") buyUpgrade(2);
-    if (e.key === "3") buyUpgrade(3);
-});
+window.addEventListener("keydown", (e) => { keys[e.key] = true; });
 window.addEventListener("keyup", (e) => { keys[e.key] = false; });
 
-// --- MOBILIE SKĀRIENJUTĪGIE NOTIKUMI (TELEFONIEM) ---
-document.getElementById("btn-left").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowLeft"] = true; });
-document.getElementById("btn-left").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowLeft"] = false; });
-
-document.getElementById("btn-right").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowRight"] = true; });
-document.getElementById("btn-right").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowRight"] = false; });
-
-document.getElementById("btn-jump").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
-document.getElementById("btn-jump").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowUp"] = false; });
-
+// Mobilā vadība ar pārbaudi, lai neradītu kļūdas, ja elementi vēl nav gatavi
+if(document.getElementById("btn-left")) {
+    document.getElementById("btn-left").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowLeft"] = true; });
+    document.getElementById("btn-left").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowLeft"] = false; });
+    document.getElementById("btn-right").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowRight"] = true; });
+    document.getElementById("btn-right").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowRight"] = false; });
+    document.getElementById("btn-jump").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
+    document.getElementById("btn-jump").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowUp"] = false; });
+}
 
 function update() {
     player.isMoving = false;
@@ -231,14 +232,19 @@ function update() {
     
     if (Math.abs(player.velX) > 0.2) { player.isMoving = true; }
 
-    if (player.isMoving) {
+    // Animācijas kadru pārslēgšana skriešanai (Run sadaļā ir 7 kadri)
+    if (player.isMoving && player.grounded) {
         animationTimer++;
-        if (animationTimer >= 8) {
-            currentRunFrame = (currentRunFrame === 1) ? 2 : 1;
+        if (animationTimer >= 6) {
+            currentRunFrame = (currentRunFrame + 1) % 7; 
             animationTimer = 0;
         }
+    } else if (!player.grounded) {
+        // Ja lēc, izmanto lēciena kadru
+        currentRunFrame = 0;
     } else {
-        currentRunFrame = 1;
+        // Ja stāv, izmanto pirmo stāvēšanas kadru
+        currentRunFrame = 0;
     }
 
     let currentJumpForce = player.baseJump - (jumpLevel * 0.4);
@@ -250,7 +256,7 @@ function update() {
     }
 
     player.velX *= 0.75;
-    player.velY += 0.55; // Pielāgota gravitācija lielākam augstumam
+    player.velY += 0.55; 
     player.grounded = false;
 
     for (let i = 0; i < currentPlatforms.length; i++) {
@@ -272,7 +278,6 @@ function update() {
 
     if (player.x < 0) player.x = 0;
 
-    // Kamera sāk sekot no 350px uz lielāka ekrāna
     if (player.x > 350) { cameraX = player.x - 350; } else { cameraX = 0; }
 
     if (player.y > canvas.height) { resetPlayer(); }
@@ -303,14 +308,11 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fons
+    // Fons un zvaigznes
     ctx.fillStyle = "#0b0e14"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Zvaigznes lielākam laukumam
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(100 - cameraX*0.1, 80, 2, 2); ctx.fillRect(300 - cameraX*0.1, 50, 3, 3);
     ctx.fillRect(550 - cameraX*0.1, 120, 2, 2); ctx.fillRect(700 - cameraX*0.1, 200, 3, 3);
-    ctx.fillRect(950 - cameraX*0.1, 90, 2, 2);
 
     // Platformas
     currentPlatforms.forEach(plat => {
@@ -326,23 +328,43 @@ function draw() {
         }
     });
 
-    // MrBeast
+    // MrBeast modelis
     ctx.drawImage(mrBeastImg, currentBoss.x - cameraX, currentBoss.y, currentBoss.width, currentBoss.height);
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 13px Arial";
     ctx.fillText("MrBeast", currentBoss.x - cameraX - 5, currentBoss.y - 8);
 
-    // Pēpe
+    // --- PĒPES ZĪMĒŠANA NO TAVA SPRITESHEET ---
     ctx.save();
-    let currentImg = player.isMoving ? ((currentRunFrame === 1) ? pepeRun1 : pepeRun2) : pepeIdle;
-    if (facingDirection === -1) {
-        ctx.translate(player.x - cameraX + player.width, player.y); ctx.scale(-1, 1);
-        ctx.drawImage(currentImg, 0, 0, player.width, player.height);
+    
+    // Šie parametri nosaka, no kuras vietas lielajā attēlā izgriezt vajadzīgo kadrilāžu
+    // Ja tev šobrīd nav izgriezti atsevišķi kadri, šis paraudziņš pagaidām zīmē bāzes pozīciju
+    let spriteWidth = 100;  // Viena Pēpes kadra platums spritesheet lapā
+    let spriteHeight = 110; // Viena Pēpes kadra augstums spritesheet lapā
+    let sourceX = 0;
+    let sourceY = 0;
+
+    // Ja Pepe skrien, izvēlamies skriešanas rindu
+    if (player.isMoving && player.grounded) {
+        sourceX = currentRunFrame * spriteWidth;
+        sourceY = spriteHeight; // Pieņemot, ka RUN ir otrā rinda
+    } else if (!player.grounded) {
+        sourceX = 0;
+        sourceY = spriteHeight * 2; // JUMP rinda
     } else {
-        ctx.drawImage(currentImg, player.x - cameraX, player.y, player.width, player.height);
+        sourceX = 0;
+        sourceY = 0; // IDLE pirmā rinda
+    }
+
+    if (facingDirection === -1) {
+        ctx.translate(player.x - cameraX + player.width, player.y); 
+        ctx.scale(-1, 1);
+        ctx.drawImage(pepeSpritesheet, sourceX, sourceY, spriteWidth, spriteHeight, 0, 0, player.width, player.height);
+    } else {
+        ctx.drawImage(pepeSpritesheet, sourceX, sourceY, spriteWidth, spriteHeight, player.x - cameraX, player.y, player.width, player.height);
     }
     ctx.restore();
 
-    // Līmeņa teksts (Veikals no šejienes ir pilnībā izdzēsts!)
+    // UI teksts
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 18px Arial";
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
     ctx.fillText(lvlText + (currentLevel + 1) + " / 30", 20, 45);
@@ -359,8 +381,11 @@ function clearSavedProgress() {
     generateLevel(currentLevel); resetPlayer(); saveProgress();
 }
 
-generateLevel(currentLevel);
-resetPlayer();
-changeLanguage(currentLang);
-updateShopUI();
-update();
+// Šī funkcija sāk spēli tikai tad, kad visi attēli ir pilnībā ielādēti!
+function startGame() {
+    generateLevel(currentLevel);
+    resetPlayer();
+    changeLanguage(currentLang);
+    updateShopUI();
+    update();
+}
