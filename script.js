@@ -5,12 +5,10 @@ const scoreTextElement = document.getElementById("score-text");
 const controlsTextElement = document.getElementById("controls-text");
 
 // --- PROGRESSA IELĀDE NO ATMIŅAS (localStorage) ---
-// Ja atmiņā nekas nav, tad sākam no 0 (1. līmenis) un 0 punktiem
 let score = parseInt(localStorage.getItem("pepe_score")) || 0;
 let currentLevel = parseInt(localStorage.getItem("pepe_level")) || 0;
 let currentLang = localStorage.getItem("pepe_lang") || 'lv';
 
-// Atjaunojam punktu skaitu ekrānā uzreiz pēc ielādes
 scoreValElement.innerText = score;
 
 const TOTAL_LEVELS = 30; 
@@ -25,6 +23,10 @@ pepeRun1.src = 'pepe_run1.png';
 
 const pepeRun2 = new Image();
 pepeRun2.src = 'pepe_run2.png';
+
+// Jaunais MrBeast attēls (modelis)
+const mrBeastImg = new Image();
+mrBeastImg.src = 'mrbeast.png'; 
 
 // --- ANIMĀCIJAS MAINĪGIE ---
 let facingDirection = 1;       
@@ -52,7 +54,6 @@ const translations = {
     }
 };
 
-// Funkcija, kas saglabā datus pārlūkprogrammā
 function saveProgress() {
     localStorage.setItem("pepe_level", currentLevel);
     localStorage.setItem("pepe_score", score);
@@ -67,11 +68,9 @@ function changeLanguage(lang) {
     const buttons = document.querySelectorAll('.lang-btn');
     buttons.forEach(btn => btn.classList.remove('active'));
     
-    // Pārbaudām window.event drošībai, ja funkciju izsauc automātiski ielādējot
     if (window.event && window.event.target) {
         window.event.target.classList.add('active');
     } else {
-        // Atrodam pogu manuāli pēc teksta, ja ielādējas automātiski
         buttons.forEach(btn => {
             if (btn.innerText.toLowerCase() === lang) btn.classList.add('active');
         });
@@ -90,9 +89,8 @@ const keys = {};
 
 let currentPlatforms = [];
 let currentItems = [];
-let currentBoss = { x: 0, y: 0, width: 40, height: 50 };
+let currentBoss = { x: 0, y: 0, width: 40, height: 50 }; // Varonis saglabā savus izmērus attēlam
 
-// --- MATEMĀTISKI SAKĀRTOTS LĪMEŅU ĢENERATORS AR GARUMU ---
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
@@ -217,30 +215,28 @@ function update() {
 
     if (player.y > canvas.height) { resetPlayer(); }
 
-    // Monētu vākšana + PROGRESSA SAGLABĀŠANA
     currentItems.forEach(item => {
         if (!item.collected && player.x < item.x + item.width && player.x + player.width > item.x &&
             player.y < item.y + item.height && player.y + player.height > item.y) {
             item.collected = true;
             score += 10;
             scoreValElement.innerText = score;
-            saveProgress(); // Saglabājam jauno punktu skaitu pārlūkā
+            saveProgress(); 
         }
     });
 
-    // Līmeņa beigas + PROGRESSA SAGLABĀŠANA
     if (player.x < currentBoss.x + currentBoss.width && player.x + player.width > currentBoss.x &&
         player.y < currentBoss.y + currentBoss.height && player.y + player.height > currentBoss.y) {
         
         if (currentLevel < TOTAL_LEVELS - 1) {
             currentLevel++; 
-            saveProgress(); // Saglabājam jauno līmeni atmiņā pirms alert loga
+            saveProgress(); 
             alert(translations[currentLang].nextLevel + (currentLevel + 1));
             generateLevel(currentLevel); 
             resetPlayer();
         } else {
             alert(translations[currentLang].win + score);
-            clearSavedProgress(); // Ja spēle pilnībā izieta, nodzēšam atmiņu restartam
+            clearSavedProgress(); 
         }
     }
 
@@ -276,12 +272,14 @@ function draw() {
         }
     });
 
-    ctx.fillStyle = "#002fa7";
-    ctx.fillRect(currentBoss.x - cameraX, currentBoss.y, currentBoss.width, currentBoss.height);
+    // --- ŠEIT ZĪMĒJAM ĪSTO MRBEAST ATTĒLU ---
+    ctx.drawImage(mrBeastImg, currentBoss.x - cameraX, currentBoss.y, currentBoss.width, currentBoss.height);
+    
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 12px Arial";
     ctx.fillText("MrBeast", currentBoss.x - cameraX - 5, currentBoss.y - 8);
 
+    // Pēpe kosmonauts
     ctx.save();
     let currentImg = player.isMoving ? ((currentRunFrame === 1) ? pepeRun1 : pepeRun2) : pepeIdle;
 
@@ -307,7 +305,6 @@ function resetPlayer() {
     player.velY = 0;
 }
 
-// Funkcija, lai pilnībā nodzēstu atmiņu un sāktu no nulles (ja spēlētājs grib restartēt visu spēli)
 function clearSavedProgress() {
     localStorage.removeItem("pepe_level");
     localStorage.removeItem("pepe_score");
@@ -318,11 +315,7 @@ function clearSavedProgress() {
     resetPlayer();
 }
 
-// Sagatavojam pareizo līmeni ielādes brīdī
 generateLevel(currentLevel);
 resetPlayer();
-
-// Uzstādām saglabāto valodu
 changeLanguage(currentLang);
-
 update();
