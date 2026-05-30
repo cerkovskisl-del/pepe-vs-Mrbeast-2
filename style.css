@@ -1,0 +1,74 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: radial-gradient(circle, #2c3e50, #0f171e);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #ffffff;
+    overflow: hidden;
+}
+
+.lang-selector {
+    margin-bottom: 15px;
+}
+
+.lang-btn {
+    background: #34495e;
+    color: white;
+    border: 2px solid #ffffff33;
+    padding: 5px 15px;
+    margin: 0 5px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.lang-btn:hover {
+    background: #1abc9c;
+    border-color: #ffffff;
+}
+
+.lang-btn.active {
+    background: #2ecc71;
+    border-color: #ffffff;
+}
+
+.scoreboard {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px 20px;
+    border-radius: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#score-val {
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+canvas {
+    border: 4px solid #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    background-color: #87CEEB;
+}
+
+.controls {
+    margin-top: 15px;
+    font-size: 14px;
+    color: #bdc3c7;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 5px 15px;
+    border-radius: 10px;
+    text-align: center;
+}
