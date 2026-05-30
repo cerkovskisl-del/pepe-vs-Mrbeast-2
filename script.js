@@ -31,9 +31,6 @@ let currentBgColor = "#0b0e14";
 let currentPlatformColor = "#2c3e50";
 let currentPlatformTopColor = "#00d2ff";
 
-// Galvenais laika skaitītājs krāsu animācijai bezgalīgajā režīmā
-let parkourTime = 0;
-
 // --- MAINĪGAIS SPĒLES IEKŠĒJAM PAZIŅOJUMAM ---
 let levelClearTimer = 0; 
 
@@ -214,8 +211,8 @@ function generateLevel(lvl) {
     visitedPlatforms = [];
     cameraX = 0; 
 
-    // Sākuma drošā platforma
-    currentPlatforms.push({ id: 0, x: 0, y: 440, width: 200, height: 25 });
+    // Sākuma platforma (pelēka / parasta)
+    currentPlatforms.push({ id: 0, x: 0, y: 440, width: 200, height: 25, hue: null });
     visitedPlatforms.push(0); 
 
     if (gameMode === "normal") {
@@ -264,7 +261,13 @@ function generateLevel(lvl) {
             if (platY > 430) platY = 430;
 
             let platX = startX;
-            currentPlatforms.push({ id: i + 1, x: platX, y: platY, width: platWidth, height: 18 });
+            
+            // Parastajos līmeņos katrai platformai var iedot arī savu fiksētu krāsu, kas atšķiras par 25 grādiem
+            let normalHue = (i * 25) % 360;
+
+            currentPlatforms.push({ 
+                id: i + 1, x: platX, y: platY, width: platWidth, height: 18, hue: normalHue 
+            });
             
             startX += platWidth + gapX;
             lastNormalY = platY;
@@ -285,13 +288,13 @@ function generateLevel(lvl) {
 
         let finalPlatX = startX + 20;
         let finalPlatY = 330;
-        currentPlatforms.push({ id: currentPlatforms.length, x: finalPlatX, y: finalPlatY, width: 150, height: 25 });
+        currentPlatforms.push({ id: currentPlatforms.length, x: finalPlatX, y: finalPlatY, width: 150, height: 25, hue: null });
         currentBoss.x = finalPlatX + 50;
         currentBoss.y = finalPlatY - currentBoss.height;
 
     } else {
-        // PARKOUR REŽĪMS: Sākuma vērtības
-        currentBgColor = "#0b0e14";
+        // PARKOUR REŽĪMS
+        currentBgColor = "#07090e"; // Fiksēts smuks tumšs fons
         lastParkourX = 260;
         lastParkourY = 400;
         for (let i = 0; i < 12; i++) {
@@ -311,12 +314,16 @@ function addSingleParkourPlatform() {
     if (platY < 180) platY = 180 + Math.random() * 30;
     if (platY > 430) platY = 430 - Math.random() * 30;
 
+    // FIKSĒTĀ KRĀSA: Katrai nākamajai platformai krāsa nobīdās par 30 grādiem
+    let assignedHue = (nextId * 30) % 360;
+
     currentPlatforms.push({
         id: nextId,
         x: lastParkourX,
         y: platY,
         width: platWidth,
-        height: 18
+        height: 18,
+        hue: assignedHue // Saglabājam tieši šai platformai
     });
 
     lastParkourX += platWidth + gapX;
@@ -431,157 +438,3 @@ function update() {
     player.velX *= 0.82; player.velY += 0.55; player.grounded = false;
 
     for (let i = 0; i < currentPlatforms.length; i++) {
-        let plat = currentPlatforms[i];
-        if (player.x < plat.x + plat.width && player.x + player.width > plat.x &&
-            player.y < plat.y + plat.height && player.y + player.height > plat.y) {
-            
-            if (player.velY > 0 && player.y + player.height - player.velY <= plat.y) {
-                player.grounded = true; player.jumping = false; player.velY = 0; player.y = plat.y - player.height;
-                
-                if (gameMode === "parkour" && !visitedPlatforms.includes(plat.id)) {
-                    visitedPlatforms.push(plat.id);
-                    score += 10; 
-                    if(scoreValElement) scoreValElement.innerText = score;
-                    saveProgress();
-                    addSingleParkourPlatform(); 
-                }
-            }
-        }
-    }
-
-    if (player.grounded) player.velY = 0;
-    player.x += player.velX; player.y += player.velY;
-
-    if (player.x < 0) player.x = 0;
-    if (player.x > 350) { cameraX = player.x - 350; } else { cameraX = 0; }
-    
-    if (player.y > canvas.height) { 
-        if(gameMode === "parkour") {
-            generateLevel(0); 
-        }
-        resetPlayer(); 
-    }
-
-    if (gameMode === "normal") {
-        currentItems.forEach(item => {
-            if (!item.collected && player.x < item.x + item.width && player.x + player.width > item.x &&
-                player.y < item.y + item.height && player.y + player.height > item.y) {
-                item.collected = true; score += item.coinValue; 
-                if(scoreValElement) scoreValElement.innerText = score; saveProgress(); 
-            }
-        });
-
-        if (player.x < currentBoss.x + currentBoss.width && player.x + player.width > currentBoss.x &&
-            player.y < currentBoss.y + currentBoss.height && player.y + player.height > currentBoss.y) {
-            currentLevel++; saveProgress(); levelClearTimer = 180; clearKeys(); generateLevel(currentLevel); resetPlayer();
-        }
-    }
-
-    // Palielinām laiku plūstošai animācijai
-    if (gameMode === "parkour") {
-        parkourTime = (parkourTime + 0.4) % 360; 
-        currentBgColor = `hsl(${parkourTime}, 30%, 7%)`; // Maigi mainīgs tumšais fons
-    }
-
-    if (levelClearTimer > 0) { levelClearTimer--; }
-
-    draw();
-    requestAnimationFrame(update);
-}
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = currentBgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(100 - cameraX*0.1, 80, 2, 2); ctx.fillRect(300 - cameraX*0.1, 50, 3, 3);
-    ctx.fillRect(550 - cameraX*0.1, 120, 2, 2); ctx.fillRect(700 - cameraX*0.1, 200, 3, 3);
-    ctx.fillRect(850 - cameraX*0.1, 70, 2, 2);
-
-    // CRASAS MAIŅA KATRAI PLATFORMAI ATSEVIŠĶI
-    currentPlatforms.forEach((plat, index) => {
-        if (gameMode === "parkour") {
-            // Katrai platformai pieliekam klāt tās indeksu pomnožitu uz 20, lai katrai būtu cita krāsa!
-            let individualHue = (parkourTime + index * 20) % 360;
-            
-            ctx.fillStyle = `hsl(${individualHue}, 35%, 22%)`; // Platformas apakša
-            ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
-            
-            ctx.fillStyle = `hsl(${individualHue}, 100%, 55%)`; // Platformas spīdošā augša
-            ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
-        } else {
-            // Parastajos līmeņos paliek stabilās zonas krāsas
-            ctx.fillStyle = currentPlatformColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
-            ctx.fillStyle = currentPlatformTopColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
-        }
-    });
-
-    if (gameMode === "normal") {
-        currentItems.forEach(item => {
-            if (!item.collected) {
-                let activeCoinImg = coinNormalImg; 
-                if (item.coinType === "cosmic") activeCoinImg = coinCosmicImg;
-                else if (item.coinType === "sad") activeCoinImg = coinSadImg;
-                ctx.drawImage(activeCoinImg, item.x - cameraX, item.y, item.width, item.height);
-            }
-        });
-
-        ctx.drawImage(mrBeastImg, currentBoss.x - cameraX, currentBoss.y, currentBoss.width, currentBoss.height);
-        ctx.fillStyle = "#ffffff"; ctx.font = "bold 13px Arial";
-        ctx.fillText("MrBeast", currentBoss.x - cameraX - 5, currentBoss.y - 8);
-    }
-
-    ctx.save();
-    let skinSet = skins[currentSkin]; let currentImg = skinSet.idle;
-    if (player.isMoving) { currentImg = (currentRunFrame === 1) ? skinSet.r1 : skinSet.r2; }
-    if (facingDirection === -1) {
-        ctx.translate(player.x - cameraX + player.width, player.y); ctx.scale(-1, 1);
-        ctx.drawImage(currentImg, 0, 0, player.width, player.height);
-    } else {
-        ctx.drawImage(currentImg, player.x - cameraX, player.y, player.width, player.height);
-    }
-    ctx.restore();
-
-    ctx.fillStyle = "#ffffff"; ctx.font = "bold 18px Arial";
-    if (gameMode === "normal") {
-        let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
-        ctx.fillText(lvlText + (currentLevel + 1), 20, 45);
-    } else {
-        let modeTxt = (currentLang === 'lv') ? "Bezgalīgais Parkour" : (currentLang === 'en') ? "Infinite Parkour" : "Бесконечный Паркур";
-        ctx.fillText(modeTxt, 20, 45);
-    }
-
-    if (levelClearTimer > 0 && gameMode === "normal") {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(0, canvas.height / 2 - 50, canvas.width, 90);
-        ctx.fillStyle = "#00ffcc"; ctx.font = "bold 28px Arial"; ctx.textAlign = "center";
-        ctx.fillText(translations[currentLang].nextLevel, canvas.width / 2, canvas.height / 2 - 10);
-        ctx.fillStyle = "#ffffff"; ctx.font = "16px Arial";
-        ctx.fillText(translations[currentLang].getReady + (currentLevel + 1), canvas.width / 2, canvas.height / 2 + 20);
-        ctx.textAlign = "left";
-    }
-}
-
-function resetPlayer() { player.x = 60; player.y = 200; player.velX = 0; player.velY = 0; }
-
-function clearSavedProgress() {
-    if (document.activeElement) document.activeElement.blur();
-    localStorage.clear();
-    currentLevel = 0; score = 0; speedLevel = 0; jumpLevel = 0;
-    ownedSkins = ["default"]; currentSkin = "default";
-    if(scoreValElement) scoreValElement.innerText = score;
-    generateLevel(currentLevel); resetPlayer(); saveProgress(); updateSkinUI();
-}
-
-function startGame() {
-    generateLevel(currentLevel);
-    resetPlayer();
-    changeLanguage(currentLang);
-    updateShopUI();
-    updateSkinUI(); 
-    update();
-}
-
-window.addPoints = function(amount) {
-    score += amount; if(scoreValElement) scoreValElement.innerText = score; saveProgress();
-};
