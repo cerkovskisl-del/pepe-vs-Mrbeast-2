@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pepe vs MrBeast Platformeris</title>
+    
+    <style>
+        /* Nokrāsojam visu lapas fonu un nocentrējam saturu */
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle, #2c3e50, #0f171e); /* Moderns, tumšs fons */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        /* Punktu skaitītāja stils */
+        .scoreboard {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #score {
+            color: #ffd700; /* Zelta krāsa punktiem */
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Spēles laukuma (Canvas) stils */
+        canvas {
+            border: 4px solid #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6); /* Izteiksmīga ēna */
+            background-color: #87CEEB; /* Debesu zils fons, ja JS nepaspēj ielādēt */
+        }
+
+        /* Vadības pamācība apakšā */
+        .controls {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #bdc3c7;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px 15px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scoreboard">Punkti: <span id="score">0</span></div>
+    
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    
+    <div class="controls">Vadība: Kustība ar bultiņām vai WASD | Lēkt ar Atstarpi (Space)</div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+
+        let score = 0;
+
+        // Varonis (Pepe)
+        const player = {
+            x: 50, y: 300, width: 30, height: 40,
+            speed: 5, velX: 0, velY: 0,
+            jumping: false, grounded: false
+        };
+
+        const keys = {};
+
+        // Platformu izkārtojums
+        const platforms = [
+            { x: 0, y: 380, width: 800, height: 20 }, // Galvenā zeme
+            { x: 200, y: 280, width: 120, height: 15 },
+            { x: 400, y: 220, width: 150, height: 15 },
+            { x: 150, y: 150, width: 100, height: 15 },
+            { x: 600, y: 150, width: 150, height: 15 } // MrBeast platforma
+        ];
+
+        // Monētas (Punkti)
+        const items = [
+            { x: 250, y: 240, width: 15, height: 15, collected: false },
+            { x: 450, y: 180, width: 15, height: 15, collected: false },
+            { x: 180, y: 110, width: 15, height: 15, collected: false }
+        ];
+
+        // Mērķis (MrBeast)
+        const boss = { x: 660, y: 100, width: 40, height: 50 };
+
+        // Klausāmies tastatūru
+        window.addEventListener("keydown", (e) => { keys[e.key] = true; });
+        window.addEventListener("keyup", (e) => { keys[e.key] = false; });
+
+        // Spēles matemātika un loģika
+        function update() {
+            if (keys["ArrowRight"] || keys["d"] || keys["D"]) { if (player.velX < player.speed) player.velX++; }
+            if (keys["ArrowLeft"] || keys["a"] || keys["A"]) { if (player.velX > -player.speed) player.velX--; }
+            if ((keys["ArrowUp"] || keys["w"] || keys["W"] || keys[" "]) && !player.jumping && player.grounded) {
+                player.jumping = true;
+                player.grounded = false;
+                player.velY = -11; // Lēciena augstums
+            }
+
+            player.velX *= 0.8; // Berze
+            player.velY += 0.45; // Gravitācija
+            player.grounded = false;
+
+            // Sadursmes ar platformām
+            for (let i = 0; i < platforms.length; i++) {
+                let plat = platforms[i];
+                if (player.x < plat.x + plat.width && player.x + player.width > plat.x &&
+                    player.y < plat.y + plat.height && player.y + player.height > plat.y) {
+                    if (player.velY > 0 && player.y + player.height - player.velY <= plat.y) {
+                        player.grounded = true;
+                        player.jumping = false;
+                        player.velY = 0;
+                        player.y = plat.y - player.height;
+                    }
+                }
+            }
+
+            if (player.grounded) player.velY = 0;
+            player.x += player.velX;
+            player.y += player.velY;
+
+            // Ja nokrīt lejā, restartē pozīciju
+            if (player.y > canvas.height) { resetPlayer(); }
+
+            // Monētu pacelšana
+            items.forEach(item => {
+                if (!item.collected && player.x < item.x + item.width && player.x + player.width > item.x &&
+                    player.y < item.y + item.height && player.y + player.height > item.y) {
+                    item.collected = true;
+                    score += 10;
+                    scoreElement.innerText = score;
+                }
+            });
+
+            // Uzvara (Sasniedzot MrBeast)
+            if (player.x < boss.x + boss.width && player.x + player.width > boss.x &&
+                player.y < boss.y + boss.height && player.y + player.height > boss.y) {
+                alert("Pepe veiksmīgi atrada MrBeast! Kopējie punkti: " + score);
+                resetGame();
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        // Zīmēšana uz ekrāna
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Spēles fons (Debesis)
+            ctx.fillStyle = "#a1dbf7";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Platformas (Brūnas ar zaļu zālīti augšā)
+            platforms.forEach(plat => {
+                ctx.fillStyle = "#795548"; // Brūna zeme
+                ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+                ctx.fillStyle = "#4CAF50"; // Zaļa zāle virspusē
+                ctx.fillRect(plat.x, plat.y, plat.width, 4);
+            });
+
+            // Monētas (Zelta apļi)
+            ctx.fillStyle = "#FFD700";
+            items.forEach(item => {
+                if (!item.collected) {
+                    ctx.beginPath();
+                    ctx.arc(item.x + item.width/2, item.y + item.height/2, item.width/2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // MrBeast (Zils kvadrāts ar tekstu)
+            ctx.fillStyle = "#002fa7";
+            ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 12px Arial";
+            ctx.fillText("MrBeast", boss.x - 5, boss.y - 8);
+
+            // Pepe (Zaļš kvadrāts ar tekstu)
+            ctx.fillStyle = "#32CD32";
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = "#000000";
+            ctx.font = "bold 12px Arial";
+            ctx.fillText("Pepe", player.x, player.y - 8);
+        }
+
+        function resetPlayer() {
+            player.x = 50; player.y = 300; player.velX = 0; player.velY = 0;
+        }
+
+        function resetGame() {
+            resetPlayer();
+            score = 0;
+            scoreElement.innerText = score;
+            items.forEach(i => i.collected = false);
+        }
+
+        update();
+    </script>
+</body>
+</html>
