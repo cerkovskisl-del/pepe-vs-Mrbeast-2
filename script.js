@@ -7,7 +7,7 @@ const controlsTextElement = document.getElementById("controls-text");
 let score = 0;
 let currentLang = 'lv';
 let currentLevel = 0; 
-const TOTAL_LEVELS = 30; // Kopā būs 30 līmeņi
+const TOTAL_LEVELS = 30; 
 
 // --- ATTĒLU IELĀDE ---
 const pepeIdle = new Image();
@@ -28,20 +28,20 @@ const translations = {
     lv: {
         score: "Punkti",
         controls: "Vadība: Kustība ar bultiņām vai WASD | Lēkt ar Atstarpi (Space)",
-        nextLevel: "Lieliski! Līmenis pabeigts! Gatavojies līmenim: ",
-        win: "NETICAMI! Tu izgāji visus 30 līmeņus un uzvarēji spēli! Kopējie punkti: "
+        nextLevel: "Līmenis pabeigts! Gatavojies līmenim: ",
+        win: "Apsveicu! Tu izgāji visus 30 līmeņus! Kopējie punkti: "
     },
     en: {
         score: "Points",
         controls: "Controls: Move with Arrows or WASD | Jump with Space",
-        nextLevel: "Great job! Level cleared! Get ready for Level ",
-        win: "INCREDIBLE! You beat all 30 levels and won the game! Total points: "
+        nextLevel: "Level cleared! Get ready for Level ",
+        win: "Congratulations! You beat all 30 levels! Total points: "
     },
     ru: {
         score: "Очки",
         controls: "Управление: Движение стрелками или WASD | Прыжок через Пробел",
-        nextLevel: "Отлично! Уровень пройден! Приготовься к уровню ",
-        win: "НЕВЕРОЯТНО! Ты прошёл все 30 уровней и выиграл игру! Всего очков: "
+        nextLevel: "Уровень пройден! Приготовься к уровню ",
+        win: "Поздравляем! Ты прошёл все 30 уровней! Всего очков: "
     }
 };
 
@@ -64,82 +64,66 @@ const player = {
 
 const keys = {};
 
-// Pašreizējā līmeņa objekti, kas tiks pārrakstīti katrā līmenī
 let currentPlatforms = [];
 let currentItems = [];
 let currentBoss = { x: 0, y: 0, width: 40, height: 50 };
 
-// --- AUTOMĀTISKAIS LĪMEŅU ĢENERATORS ---
-// Šī funkcija izveido unikālu karti atkarībā no līmeņa numura (0 līdz 29)
-function generateLevel(levelNumber) {
+// --- MATEMĀTISKI SAKĀRTOTS LĪMEŅU ĢENERATORS ---
+function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
 
-    // 1. Izveidojam starta zemi zem spēlētāja kājas
-    currentPlatforms.push({ x: 0, y: 380, width: 150, height: 20 });
+    // Starta drošības platforma Pēpem
+    currentPlatforms.push({ x: 0, y: 340, width: 120, height: 20 });
 
-    // Sarežģītības koeficients: jo lielāks līmenis, jo mazākas platformas un lielākas atstarpes
-    let levelDifficulty = levelNumber / TOTAL_LEVELS; // skaitlis no 0.0 līdz 1.0
-    
-    let currentX = 180;
-    let currentY = 320;
-    
-    // Uzģenerējam 5 līdz 8 platformas atkarībā no līmeņa progressa
-    let platformCount = 5 + Math.floor(levelDifficulty * 3);
+    // Nosakām spēles grūtību (no 1 līdz 30)
+    let difficultyFactor = lvl / TOTAL_LEVELS;
 
-    for (let i = 0; i < platformCount; i++) {
-        // Platformas platums samazinās, ejot uz priekšu līmeņos (sākot no 140 līdz pat 60 pikseļiem)
-        let platWidth = 140 - Math.floor(levelDifficulty * 80);
-        if (platWidth < 60) platWidth = 60; // Lai nav par mazu
+    // Aprēķinām platformu skaitu, platumu un attālumus pēc stabilas formulas
+    let numPlatforms = 5 + Math.floor(lvl / 6); // Līmeņos būs no 5 līdz 10 platformām
+    let platWidth = 150 - (lvl * 2.5);          // Platformas kļūst šaurākas (no 150 līdz 75)
+    if (platWidth < 70) platWidth = 70;         // Neļaujam būt pārāk šaurām
 
+    let startX = 170;
+    let startY = 320;
+
+    for (let i = 0; i < numPlatforms; i++) {
+        // Aprēķinām loģisku un uzlēcamu attālumu starp platformām
+        let gapX = 70 + (difficultyFactor * 50) + (i * 5); 
+        if (gapX > 140) gapX = 140; // Maksimālais drošais lēciena attālums
+
+        // Veidojam skaistu viļņveida vai kāpņu augstuma maiņu (izmantojam Sinusīdu stabilitātei)
+        let wave = Math.sin(i + lvl) * 60; 
+        let platY = startY + wave - (difficultyFactor * i * 10);
+
+        // Drošības rāmji, lai platformas neiziet no ekrāna
+        if (platY < 120) platY = 120;
+        if (platY > 360) platY = 340;
+
+        let platX = startX + (i * (platWidth + gapX));
+
+        // Pievienojam platformu
         currentPlatforms.push({
-            x: currentX,
-            y: currentY,
+            x: platX,
+            y: platY,
             width: platWidth,
             height: 15
         });
 
-        // Uz katras otrās platformas uzliekam monētu
-        if (i % 2 === 0) {
-            currentItems.push({
-                x: currentX + (platWidth / 2) - 7,
-                y: currentY - 30,
-                width: 15,
-                height: 15,
-                collected: false
-            });
-        }
-
-        // Aprēķinām nākamās platformas pozīciju (izmantojam kontrolētu nejaušību)
-        // Atstarpe pa labi palielinās grūtākos līmeņos
-        let minGapX = 80 + Math.floor(levelDifficulty * 40);
-        let maxGapX = 130 + Math.floor(levelDifficulty * 60);
-        currentX += minGapX + Math.floor(Math.random() * (maxGapX - minGapX));
-
-        // Platformas augstums mainās uz augšu vai uz leju
-        let changeY = Math.floor(Math.random() * 100) - 50; // no -50 līdz +50
-        currentY += changeY;
-
-        // Neļaujam platformām iziet ārpus ekrāna rāmjiem augstumā
-        if (currentY < 100) currentY = 140;
-        if (currentY > 350) currentY = 300;
-        
-        // Ja platformas aiziet līdz ekrāna galam, apstājamies
-        if (currentX > 740) {
-            // Pēdējā platforma būs nedaudz lielāka drošībai
-            currentPlatforms[currentPlatforms.length - 1].width = 80;
-            break;
-        }
+        // Uz katras platformas smuki nocentrējam monētu
+        currentItems.push({
+            x: platX + (platWidth / 2) - 7,
+            y: platY - 25,
+            width: 15,
+            height: 15,
+            collected: false
+        });
     }
 
-    // Drošības pārbaude: Ja pēdējā platforma nav sasniegusi ekrāna labo pusi, pieliekam gala platformu MrBeastam
+    // Gala platforma priekš MrBeast
     let lastPlat = currentPlatforms[currentPlatforms.length - 1];
-    if (lastPlat.x < 600) {
-        lastPlat = { x: 680, y: 180, width: 100, height: 15 };
-        currentPlatforms.push(lastPlat);
-    }
-
-    // Novietojam MrBeast uz pēdējās uzģenerētās platformas
+    
+    // Novietojam MrBeast tieši pēdējās platformas vidū
     currentBoss.x = lastPlat.x + (lastPlat.width / 2) - 20;
     currentBoss.y = lastPlat.y - currentBoss.height;
 }
@@ -202,10 +186,10 @@ function update() {
     player.x += player.velX;
     player.y += player.velY;
 
-    // Ja nokrīt bedrē
+    // Ja nokrīt bedrē, Pēpe atgriežas startā
     if (player.y > canvas.height) { resetPlayer(); }
 
-    // Monētu pacelšana
+    // Monētas
     currentItems.forEach(item => {
         if (!item.collected && player.x < item.x + item.width && player.x + player.width > item.x &&
             player.y < item.y + item.height && player.y + player.height > item.y) {
@@ -215,14 +199,14 @@ function update() {
         }
     });
 
-    // Sadursme ar MrBeast
+    // Sadursme ar MrBeast (Uzvara / Nākamais līmenis)
     if (player.x < currentBoss.x + currentBoss.width && player.x + player.width > currentBoss.x &&
         player.y < currentBoss.y + currentBoss.height && player.y + player.height > currentBoss.y) {
         
         if (currentLevel < TOTAL_LEVELS - 1) {
             currentLevel++; 
             alert(translations[currentLang].nextLevel + (currentLevel + 1));
-            generateLevel(currentLevel); // Uzģenerē jauno līmeni
+            generateLevel(currentLevel); 
             resetPlayer();
         } else {
             alert(translations[currentLang].win + score);
@@ -241,18 +225,18 @@ function draw() {
     ctx.fillStyle = "#0b0e14";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Zvaigznes
+    // Zvaigznes fonā
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(100, 80, 2, 2); ctx.fillRect(300, 50, 3, 3);
     ctx.fillRect(550, 120, 2, 2); ctx.fillRect(700, 70, 3, 3);
     ctx.fillRect(450, 300, 2, 2); ctx.fillRect(150, 220, 1, 1);
 
-    // Platformas
+    // Platformas ar glītu sci-fi/kosmosa dizainu (pelēkas ar zilu neonu)
     currentPlatforms.forEach(plat => {
-        ctx.fillStyle = "#795548";
+        ctx.fillStyle = "#2c3e50"; // Tumši pelēks asteroīda/bāzes bloks
         ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
-        ctx.fillStyle = "#4CAF50";
-        ctx.fillRect(plat.x, plat.y, plat.width, 4);
+        ctx.fillStyle = "#00d2ff"; // Zils neona līnija virspusē kosmosa noskaņai
+        ctx.fillRect(plat.x, plat.y, plat.width, 3);
     });
 
     // Monētas
@@ -285,7 +269,7 @@ function draw() {
     }
     ctx.restore();
 
-    // Līmeņa teksts stūrī (atbalsta 3 valodas)
+    // Līmeņa teksts stūrī
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 16px Arial";
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
@@ -293,7 +277,11 @@ function draw() {
 }
 
 function resetPlayer() {
-    player.x = 50; player.y = 300; player.velX = 0; player.velY = 0;
+    // Spēlētājs vienmēr sāk uz pirmās platformas
+    player.x = 30; 
+    player.y = 250; 
+    player.velX = 0; 
+    player.velY = 0;
 }
 
 function resetGame() {
@@ -304,6 +292,6 @@ function resetGame() {
     resetPlayer();
 }
 
-// Palaižam pirmo līmeni spēles sākumā
 generateLevel(currentLevel);
+resetPlayer();
 update();
