@@ -9,7 +9,7 @@ let score = parseInt(localStorage.getItem("pepe_score")) || 0;
 let currentLevel = parseInt(localStorage.getItem("pepe_level")) || 0;
 let currentLang = localStorage.getItem("pepe_lang") || 'lv';
 
-// --- UPGRADE STATISTIKA (Ielādē saglabātos uzlabojumus vai sākuma vērtības) ---
+// --- UPGRADE STATISTIKA ---
 let speedLevel = parseInt(localStorage.getItem("pepe_speed_lvl")) || 0;
 let jumpLevel = parseInt(localStorage.getItem("pepe_jump_lvl")) || 0;
 
@@ -86,7 +86,6 @@ function changeLanguage(lang) {
     saveProgress();
 }
 
-// Spēlētāja sākuma bāze + klāt pieskaitītie upgrade līmeņi
 const player = {
     x: 40, y: 200, width: 40, height: 50,
     baseSpeed: 5,
@@ -96,10 +95,13 @@ const player = {
     isMoving: false
 };
 
-const keys = {};
-let currentPlatforms = [];
-let currentItems = [];
-let currentBoss = { x: 0, y: 0, width: 40, height: 50 };
+// Šeit glabājas nospiestie taustiņi
+let keys = {};
+
+// --- JAUNA FUNKCIJA TAUSTIŅU NOTĪRĪŠANAI ---
+function clearKeys() {
+    keys = {}; // Pilnībā iztukšojam sarakstu, lai nekas neiestrēgtu kustībā
+}
 
 function generateLevel(lvl) {
     currentPlatforms = [];
@@ -158,37 +160,37 @@ function generateLevel(lvl) {
     currentBoss.y = 250 - currentBoss.height;
 }
 
-// --- VEIKALA PIRKUMU KLAUSĪTĀJS (Spiežot 1, 2 vai 3) ---
 window.addEventListener("keydown", (e) => { 
     keys[e.key] = true; 
 
-    // [1] Pērk ātrumu (Maksā 50)
     if (e.key === "1") {
         if (score >= 50) {
             score -= 50;
             speedLevel++;
             scoreValElement.innerText = score;
             saveProgress();
-            alert(translations[currentLang].bought + " (+1 Rindas ātrums)");
+            alert(translations[currentLang].bought + " (+1 Ātrums)");
+            clearKeys(); // Notīra taustiņus pēc alert
         } else {
             alert(translations[currentLang].noPoints);
+            clearKeys();
         }
     }
 
-    // [2] Pērk lēcienu (Maksā 50)
     if (e.key === "2") {
         if (score >= 50) {
             score -= 50;
             jumpLevel++;
             scoreValElement.innerText = score;
             saveProgress();
-            alert(translations[currentLang].bought + " (+1 Lēciena jauda)");
+            alert(translations[currentLang].bought + " (+1 Lēciens)");
+            clearKeys(); // Notīra taustiņus pēc alert
         } else {
             alert(translations[currentLang].noPoints);
+            clearKeys();
         }
     }
 
-    // [3] Pērk jaunu līmeni (Maksā 100)
     if (e.key === "3") {
         if (score >= 100) {
             if (currentLevel < TOTAL_LEVELS - 1) {
@@ -197,13 +199,16 @@ window.addEventListener("keydown", (e) => {
                 scoreValElement.innerText = score;
                 saveProgress();
                 alert(translations[currentLang].nextLevel + (currentLevel + 1));
+                clearKeys(); // Notīra taustiņus pēc alert
                 generateLevel(currentLevel);
                 resetPlayer();
             } else {
                 alert("Tu jau esi pēdējā līmenī!");
+                clearKeys();
             }
         } else {
             alert(translations[currentLang].noPoints);
+            clearKeys();
         }
     }
 });
@@ -213,7 +218,6 @@ window.addEventListener("keyup", (e) => { keys[e.key] = false; });
 function update() {
     player.isMoving = false;
 
-    // Aktuālais ātrums = bāzes ātrums + nopirktie līmeņi (katrs dod +0.4 ātruma)
     let currentSpeed = player.baseSpeed + (speedLevel * 0.4);
 
     if (keys["ArrowRight"] || keys["d"] || keys["D"]) { 
@@ -240,7 +244,6 @@ function update() {
         currentRunFrame = 1;
     }
 
-    // Aktuālais lēciens = bāzes lēciens - nopirktie līmeņi (katrs pieliek -0.3 jaudas uz augšu)
     let currentJumpForce = player.baseJump - (jumpLevel * 0.3);
 
     if ((keys["ArrowUp"] || keys["w"] || keys["W"] || keys[" "]) && !player.jumping && player.grounded) {
@@ -297,6 +300,9 @@ function update() {
             currentLevel++; 
             saveProgress(); 
             alert(translations[currentLang].nextLevel + (currentLevel + 1));
+            
+            clearKeys(); // <--- ŠIS ATLAIŽ VISAS POGAS AUTOMĀTISKI PĒC LOGA AIZVĒRŠANAS!
+            
             generateLevel(currentLevel); 
             resetPlayer();
         } else {
@@ -343,7 +349,6 @@ function draw() {
     ctx.font = "bold 12px Arial";
     ctx.fillText("MrBeast", currentBoss.x - cameraX - 5, currentBoss.y - 8);
 
-    // Pēpe kosmonauts
     ctx.save();
     let currentImg = player.isMoving ? ((currentRunFrame === 1) ? pepeRun1 : pepeRun2) : pepeIdle;
 
@@ -356,8 +361,8 @@ function draw() {
     }
     ctx.restore();
 
-    // --- INTERFEISS (UI) UN VEIKALA PANELIS AUGŠĀ ---
-    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // Puscaurspīdīgs rāmis veikalam
+    // INTERFEISS
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; 
     ctx.fillRect(450, 5, 340, 55);
     ctx.strokeStyle = "#00d2ff";
     ctx.strokeRect(450, 5, 340, 55);
@@ -367,7 +372,6 @@ function draw() {
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
     ctx.fillText(lvlText + (currentLevel + 1) + " / 30", 20, 30);
 
-    // Veikala preču teksti uz ekrāna
     ctx.font = "11px Arial";
     ctx.fillStyle = "#FFD700";
     ctx.fillText("SHOP (Spied pogu):", 460, 20);
