@@ -23,6 +23,7 @@ let cameraX = 0;
 // --- REŽĪMA MAINĪGIE ---
 let gameMode = "normal"; // Var būt "normal" vai "parkour"
 let lastParkourX = 260;  
+let lastParkourY = 400; // Sekojam līdzi pēdējam augstumam plūstošai ģenerēšanai
 let visitedPlatforms = []; 
 
 // --- MAINĪGAIS SPĒLES IEKŠĒJAM PAZIŅOJUMAM ---
@@ -71,7 +72,6 @@ let facingDirection = 1;
 let animationTimer = 0;        
 let currentRunFrame = 1; 
 
-// --- PAPILDINĀTI TULKOJUMI VISIEM ELEMENTIEM ---
 const translations = {
     lv: {
         score: "Punkti",
@@ -137,7 +137,6 @@ function saveProgress() {
     updateShopUI();
 }
 
-// --- VEIKALA, REŽĪMU UN ĀRĒJO TEKSTU TULKOŠANA ---
 function updateShopUI() {
     if(speedLvlDisplay) speedLvlDisplay.innerText = "Lvl " + speedLevel;
     if(jumpLvlDisplay) jumpLvlDisplay.innerText = "Lvl " + jumpLevel;
@@ -155,7 +154,6 @@ function updateShopUI() {
     const modeNormalBtn = document.getElementById("btn-mode-normal");
     const modeParkourBtn = document.getElementById("btn-mode-parkour");
 
-    // Tulkojumu piešķiršana
     if(shopTitle) shopTitle.innerText = translations[currentLang].shopTitle;
     if(shopSpeedText) shopSpeedText.innerText = translations[currentLang].shopSpeed;
     if(shopJumpText) shopJumpText.innerText = translations[currentLang].shopJump;
@@ -169,7 +167,6 @@ function updateShopUI() {
     if(modeNormalBtn) modeNormalBtn.innerText = translations[currentLang].modeNormalBtn;
     if(modeParkourBtn) modeParkourBtn.innerText = translations[currentLang].modeParkourBtn;
 
-    // Ja ir Parkour režīms, vizuāli izslēdzam/nobloķējam "Izlaist līmeni" pogu
     const skipContainer = document.getElementById("btn-skip-container");
     if(skipContainer) {
         if(gameMode === "parkour") {
@@ -182,7 +179,6 @@ function updateShopUI() {
     }
 }
 
-// --- REŽĪMU PĀRSLĒGŠANA ---
 function switchMode(mode) {
     if (document.activeElement) document.activeElement.blur();
     gameMode = mode;
@@ -204,45 +200,56 @@ function switchMode(mode) {
     updateShopUI();
 }
 
-// --- APVIENOTAIS REŽĪMU ĢENERATORS ---
+// --- PLŪSTOŠAIS UN KONTROLĒTAIS ĢENERATORS ---
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
     visitedPlatforms = [];
     cameraX = 0; 
 
-    // Sākuma platforma
+    // Sākuma drošā platforma
     currentPlatforms.push({ id: 0, x: 0, y: 440, width: 200, height: 25 });
     visitedPlatforms.push(0); 
 
     if (gameMode === "normal") {
         let capLevel = Math.min(lvl, 40);
-        let difficultyFactor = capLevel / 40;
-        let numPlatforms = 7 + Math.floor(lvl / 2);
+        let difficultyFactor = capLevel / 40; 
+        
+        let numPlatforms = 8 + Math.floor(lvl * 0.6);
         if (numPlatforms > 35) numPlatforms = 35; 
-        let platWidth = 180 - (difficultyFactor * 85); 
-        if (platWidth < 95) platWidth = 95; 
 
-        let startX = 260;
-        let startY = 400;
+        // Platformu platums samazinās prātīgi, nevis par traku
+        let platWidth = 160 - (difficultyFactor * 50); 
+        if (platWidth < 100) platWidth = 100; 
+
+        let startX = 250;
+        let lastNormalY = 400; // Izmantojam ķēdes loģiku arī parastajos līmeņos
 
         for (let i = 0; i < numPlatforms; i++) {
-            let gapX = 90 + (difficultyFactor * 75) + (Math.sin(i) * 15); 
-            if (gapX > 175) gapX = 175; 
-            let wave = Math.sin(i + lvl) * (60 + (difficultyFactor * 25)); 
-            let platY = startY + wave - (difficultyFactor * i * 4);
+            // Kontrolēta atstarpe (maksimālā robeža sabalansēta ar lēciena spēku)
+            let gapX = 100 + (difficultyFactor * 45) + (Math.sin(i) * 15);
+            if (gapX > 155) gapX = 155; 
 
-            if (platY < 160) platY = 160;
-            if (platY > 450) platY = 430;
+            // Plūstoša augstuma maiņa (iepriekšējais Y +/- neliels solis)
+            let changeY = (Math.sin(i * 1.5) * 45) - (difficultyFactor * 5); 
+            let platY = lastNormalY + changeY;
 
-            let platX = startX + (i * (platWidth + gapX));
+            // Ekstrēmo malu ierobežojumi
+            if (platY < 180) platY = 180;
+            if (platY > 430) platY = 430;
 
+            let platX = startX;
             currentPlatforms.push({ id: i + 1, x: platX, y: platY, width: platWidth, height: 18 });
             
+            // Atjaunojam vērtības nākamajam ciklam
+            startX += platWidth + gapX;
+            lastNormalY = platY;
+
+            // Monētas virs platformas
             let rand = Math.random();
             let type = "normal"; let value = 10;
-            let cosmicChance = Math.min(0.05 + (lvl * 0.015), 0.45); 
-            let sadChance = Math.max(0.35 - (lvl * 0.015), 0.05); 
+            let cosmicChance = Math.min(0.05 + (lvl * 0.01), 0.35); 
+            let sadChance = Math.max(0.25 - (lvl * 0.01), 0.05); 
 
             if (rand < cosmicChance) { type = "cosmic"; value = 30; } 
             else if (rand > (1 - sadChance)) { type = "sad"; value = 3; }
@@ -253,27 +260,37 @@ function generateLevel(lvl) {
             });
         }
 
-        let lastPlat = currentPlatforms[currentPlatforms.length - 1];
-        let finalPlatX = lastPlat.x + lastPlat.width + 100;
-        
-        currentPlatforms.push({ id: currentPlatforms.length, x: finalPlatX, y: 320, width: 140, height: 25 });
-        currentBoss.x = finalPlatX + 45;
-        currentBoss.y = 320 - currentBoss.height;
+        // Finiša platforma
+        let finalPlatX = startX + 20;
+        currentPlatforms.push({ id: currentPlatforms.length, x: finalPlatX, y: 340, width: 150, height: 25 });
+        currentBoss.x = finalPlatX + 50;
+        currentBoss.y = 340 - currentBoss.height;
 
     } else {
-        // PARKOUR REŽĪMS: Sākumā uzģenerējam 10 bezgalīgās platformas
+        // PARKOUR REŽĪMS: Atiestatām plūstošos sākuma punktus
         lastParkourX = 260;
-        for (let i = 0; i < 10; i++) {
+        lastParkourY = 400;
+        for (let i = 0; i < 12; i++) {
             addSingleParkourPlatform();
         }
     }
 }
 
+// PLŪSTOŠĀ PARKOUR ĢENERĀCIJAS FUNKCIJA
 function addSingleParkourPlatform() {
     let nextId = currentPlatforms.length;
-    let platWidth = 115 + Math.random() * 55; 
-    let gapX = 100 + Math.random() * 75;      
-    let platY = 220 + Math.random() * 190;    
+    
+    // Stabilas, izlēcamas vērtības
+    let platWidth = 115 + Math.random() * 45; 
+    let gapX = 100 + Math.random() * 45;      
+
+    // ĶĒDES AUGSTUMS: Jaunā platforma ir tikai max +/- 55px no iepriekšējās
+    let offsetY = (Math.random() * 110) - 55; 
+    let platY = lastParkourY + offsetY;
+
+    // Neļaujam platformām aiziet pārāk augstu debesīs vai par zemu ekrānā
+    if (platY < 180) platY = 180 + Math.random() * 30;
+    if (platY > 430) platY = 430 - Math.random() * 30;
 
     currentPlatforms.push({
         id: nextId,
@@ -283,7 +300,9 @@ function addSingleParkourPlatform() {
         height: 18
     });
 
+    // Saglabājam datus, lai nākamā platforma būtu plūstoša no šīs
     lastParkourX += platWidth + gapX;
+    lastParkourY = platY;
 }
 
 function buySkin(name, price) {
@@ -393,7 +412,6 @@ function update() {
 
     player.velX *= 0.82; player.velY += 0.55; player.grounded = false;
 
-    // COLLISION LOGIKA UN PARKOUR PUNKTI
     for (let i = 0; i < currentPlatforms.length; i++) {
         let plat = currentPlatforms[i];
         if (player.x < plat.x + plat.width && player.x + player.width > plat.x &&
@@ -402,7 +420,6 @@ function update() {
             if (player.velY > 0 && player.y + player.height - player.velY <= plat.y) {
                 player.grounded = true; player.jumping = false; player.velY = 0; player.y = plat.y - player.height;
                 
-                // +10 monētas par jaunu platformu parkour režīmā
                 if (gameMode === "parkour" && !visitedPlatforms.includes(plat.id)) {
                     visitedPlatforms.push(plat.id);
                     score += 10; 
@@ -420,7 +437,6 @@ function update() {
     if (player.x < 0) player.x = 0;
     if (player.x > 350) { cameraX = player.x - 350; } else { cameraX = 0; }
     
-    // Nokrišana zemē
     if (player.y > canvas.height) { 
         if(gameMode === "parkour") {
             generateLevel(0); 
