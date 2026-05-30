@@ -4,12 +4,16 @@ const scoreValElement = document.getElementById("score-val");
 const scoreTextElement = document.getElementById("score-text");
 const controlsTextElement = document.getElementById("controls-text");
 
-let score = 0;
-let currentLang = 'lv';
-let currentLevel = 0; 
-const TOTAL_LEVELS = 30; 
+// --- PROGRESSA IELĀDE NO ATMIŅAS (localStorage) ---
+// Ja atmiņā nekas nav, tad sākam no 0 (1. līmenis) un 0 punktiem
+let score = parseInt(localStorage.getItem("pepe_score")) || 0;
+let currentLevel = parseInt(localStorage.getItem("pepe_level")) || 0;
+let currentLang = localStorage.getItem("pepe_lang") || 'lv';
 
-// --- KAMERAS MAINĪGAIS (EKRĀNA RITINĀŠANAI) ---
+// Atjaunojam punktu skaitu ekrānā uzreiz pēc ielādes
+scoreValElement.innerText = score;
+
+const TOTAL_LEVELS = 30; 
 let cameraX = 0;
 
 // --- ATTĒLU IELĀDE ---
@@ -31,22 +35,29 @@ const translations = {
     lv: {
         score: "Punkti",
         controls: "Vadība: Kustība ar bultiņām vai WASD | Lēkt ar Atstarpi (Space)",
-        nextLevel: "Līmenis pabeigts! Gatavojies līmenim: ",
+        nextLevel: "Līmenis pabeigts! Progres saglabāts. Gatavojies līmenim: ",
         win: "Apsveicu! Tu izgāji visus 30 līmeņus! Kopējie punkti: "
     },
     en: {
         score: "Points",
         controls: "Controls: Move with Arrows or WASD | Jump with Space",
-        nextLevel: "Level cleared! Get ready for Level ",
+        nextLevel: "Level cleared! Progress saved. Get ready for Level ",
         win: "Congratulations! You beat all 30 levels! Total points: "
     },
     ru: {
         score: "Очки",
         controls: "Управление: Движение стрелками или WASD | Прыжок через Пробел",
-        nextLevel: "Уровень пройден! Приготовься к уровню ",
+        nextLevel: "Уровень пройден! Прогресс сохранен! Приготовься к уровню ",
         win: "Поздравляем! Ты прошёл все 30 уровней! Всего очков: "
     }
 };
+
+// Funkcija, kas saglabā datus pārlūkprogrammā
+function saveProgress() {
+    localStorage.setItem("pepe_level", currentLevel);
+    localStorage.setItem("pepe_score", score);
+    localStorage.setItem("pepe_lang", currentLang);
+}
 
 function changeLanguage(lang) {
     currentLang = lang;
@@ -55,7 +66,17 @@ function changeLanguage(lang) {
 
     const buttons = document.querySelectorAll('.lang-btn');
     buttons.forEach(btn => btn.classList.remove('active'));
-    window.event.target.classList.add('active');
+    
+    // Pārbaudām window.event drošībai, ja funkciju izsauc automātiski ielādējot
+    if (window.event && window.event.target) {
+        window.event.target.classList.add('active');
+    } else {
+        // Atrodam pogu manuāli pēc teksta, ja ielādējas automātiski
+        buttons.forEach(btn => {
+            if (btn.innerText.toLowerCase() === lang) btn.classList.add('active');
+        });
+    }
+    saveProgress();
 }
 
 const player = {
@@ -75,13 +96,12 @@ let currentBoss = { x: 0, y: 0, width: 40, height: 50 };
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
-    cameraX = 0; // Atiestatām kameru katra līmeņa sākumā
+    cameraX = 0; 
 
-    // Starta platforma
     currentPlatforms.push({ x: 0, y: 340, width: 150, height: 20 });
 
     let difficultyFactor = lvl / TOTAL_LEVELS;
-    let numPlatforms = 6 + Math.floor(lvl / 4); // Līmeņi kļūst garāki (no 6 līdz 13 platformām)
+    let numPlatforms = 6 + Math.floor(lvl / 4); 
     let platWidth = 150 - (lvl * 2);
     if (platWidth < 75) platWidth = 75; 
 
@@ -107,7 +127,6 @@ function generateLevel(lvl) {
             height: 15
         });
 
-        // Monēta virs platformas
         currentItems.push({
             x: platX + (platWidth / 2) - 7,
             y: platY - 25,
@@ -117,7 +136,6 @@ function generateLevel(lvl) {
         });
     }
 
-    // Gala stabila platforma priekš MrBeast
     let lastPlat = currentPlatforms[currentPlatforms.length - 1];
     let finalPlatX = lastPlat.x + lastPlat.width + 90;
     
@@ -128,7 +146,6 @@ function generateLevel(lvl) {
         height: 20
     });
 
-    // Novietojam MrBeast uz pašas pēdējās platformas
     currentBoss.x = finalPlatX + 40;
     currentBoss.y = 250 - currentBoss.height;
 }
@@ -173,7 +190,6 @@ function update() {
     player.velY += 0.45;
     player.grounded = false;
 
-    // Sadursmes ar platformām
     for (let i = 0; i < currentPlatforms.length; i++) {
         let plat = currentPlatforms[i];
         if (player.x < plat.x + plat.width && player.x + player.width > plat.x &&
@@ -191,42 +207,40 @@ function update() {
     player.x += player.velX;
     player.y += player.velY;
 
-    // Neļaujam Pēpem aiziet aiz ekrāna kreisās malas atpakaļgaitā
     if (player.x < 0) player.x = 0;
 
-    // --- KAMERAS LOGIKA ---
-    // Kamera sāk sekot Pēpem, kad viņš aiziet tālāk par ekrāna vidu (300px)
     if (player.x > 300) {
         cameraX = player.x - 300;
     } else {
         cameraX = 0;
     }
 
-    // Ja nokrīt bedrē
     if (player.y > canvas.height) { resetPlayer(); }
 
-    // Monētas
+    // Monētu vākšana + PROGRESSA SAGLABĀŠANA
     currentItems.forEach(item => {
         if (!item.collected && player.x < item.x + item.width && player.x + player.width > item.x &&
             player.y < item.y + item.height && player.y + player.height > item.y) {
             item.collected = true;
             score += 10;
             scoreValElement.innerText = score;
+            saveProgress(); // Saglabājam jauno punktu skaitu pārlūkā
         }
     });
 
-    // Sadursme ar MrBeast
+    // Līmeņa beigas + PROGRESSA SAGLABĀŠANA
     if (player.x < currentBoss.x + currentBoss.width && player.x + player.width > currentBoss.x &&
         player.y < currentBoss.y + currentBoss.height && player.y + player.height > currentBoss.y) {
         
         if (currentLevel < TOTAL_LEVELS - 1) {
             currentLevel++; 
+            saveProgress(); // Saglabājam jauno līmeni atmiņā pirms alert loga
             alert(translations[currentLang].nextLevel + (currentLevel + 1));
             generateLevel(currentLevel); 
             resetPlayer();
         } else {
             alert(translations[currentLang].win + score);
-            resetGame();
+            clearSavedProgress(); // Ja spēle pilnībā izieta, nodzēšam atmiņu restartam
         }
     }
 
@@ -237,21 +251,15 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fons (Nekustīgs, lai izskatās dabiski)
     ctx.fillStyle = "#0b0e14";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Zvaigznes (Ar nelielu paralakses efektu dziļumam)
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(100 - cameraX*0.1, 80, 2, 2); 
     ctx.fillRect(300 - cameraX*0.1, 50, 3, 3);
     ctx.fillRect(550 - cameraX*0.1, 120, 2, 2); 
     ctx.fillRect(700 - cameraX*0.1, 70, 3, 3);
-    ctx.fillRect(900 - cameraX*0.1, 150, 2, 2);
 
-    // --- VISU SPĒLES ELEMENTU ZĪMĒŠANA AR (-cameraX) NOBĪDI ---
-    
-    // Platformas
     currentPlatforms.forEach(plat => {
         ctx.fillStyle = "#2c3e50"; 
         ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
@@ -259,7 +267,6 @@ function draw() {
         ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 3);
     });
 
-    // Monētas
     ctx.fillStyle = "#FFD700";
     currentItems.forEach(item => {
         if (!item.collected) {
@@ -269,14 +276,12 @@ function draw() {
         }
     });
 
-    // MrBeast
     ctx.fillStyle = "#002fa7";
     ctx.fillRect(currentBoss.x - cameraX, currentBoss.y, currentBoss.width, currentBoss.height);
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 12px Arial";
     ctx.fillText("MrBeast", currentBoss.x - cameraX - 5, currentBoss.y - 8);
 
-    // Pēpe kosmonauts
     ctx.save();
     let currentImg = player.isMoving ? ((currentRunFrame === 1) ? pepeRun1 : pepeRun2) : pepeIdle;
 
@@ -289,7 +294,6 @@ function draw() {
     }
     ctx.restore();
 
-    // UI (Teksts stūrī paliek uz vietas un nekustas līdzi kamerai)
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 16px Arial";
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
@@ -303,7 +307,10 @@ function resetPlayer() {
     player.velY = 0;
 }
 
-function resetGame() {
+// Funkcija, lai pilnībā nodzēstu atmiņu un sāktu no nulles (ja spēlētājs grib restartēt visu spēli)
+function clearSavedProgress() {
+    localStorage.removeItem("pepe_level");
+    localStorage.removeItem("pepe_score");
     currentLevel = 0;
     score = 0;
     scoreValElement.innerText = score;
@@ -311,5 +318,11 @@ function resetGame() {
     resetPlayer();
 }
 
+// Sagatavojam pareizo līmeni ielādes brīdī
 generateLevel(currentLevel);
+resetPlayer();
+
+// Uzstādām saglabāto valodu
+changeLanguage(currentLang);
+
 update();
