@@ -20,6 +20,9 @@ if(scoreValElement) scoreValElement.innerText = score;
 // cameraX sekošanai
 let cameraX = 0;
 
+// --- MAINĪGAIS SPĒLES IEKŠĒJAM PAZIŅOJUMAM ---
+let levelClearTimer = 0; 
+
 // --- DATORA TAUSTIŅU GLABĀTUVE ---
 let keys = {};
 let currentPlatforms = [];
@@ -79,24 +82,37 @@ let facingDirection = 1;
 let animationTimer = 0;        
 let currentRunFrame = 1; 
 
+// --- PAPILDINĀTI TULKOJUMI AR VEIKALA TEKSTIEM ---
 const translations = {
     lv: {
         score: "Punkti",
         controls: "Vadība: Bultiņas/WASD = Kustība | Atstarpe = Lēkt || Telefonā izmanto pogas apakšā!",
-        nextLevel: "Līmenis pabeigts! Progress saglabāts. Gatavojies līmenim: ",
-        noPoints: "Tev nepietiek punktu!"
+        nextLevel: "LĪMENIS PABEIGTS!",
+        getReady: "Gatavojies līmenim: ",
+        noPoints: "Tev nepietiek punktu!",
+        buySpeed: "Uzlabot Ātrumu (50p)",
+        buyJump: "Uzlabot Lēcienu (50p)",
+        skipLevel: "Izlaist Līmeni (100p)"
     },
     en: {
         score: "Points",
         controls: "Controls: Arrows/WASD = Move | Space = Jump || On mobile use buttons below!",
-        nextLevel: "Level cleared! Progress saved. Get ready for Level ",
-        noPoints: "Not enough points!"
+        nextLevel: "LEVEL CLEARED!",
+        getReady: "Get ready for Level ",
+        noPoints: "Not enough points!",
+        buySpeed: "Upgrade Speed (50p)",
+        buyJump: "Upgrade Jump (50p)",
+        skipLevel: "Skip Level (100p)"
     },
     ru: {
         score: "Очки",
         controls: "Управление: Стрелки/WASD = Бег | Пробел = Прыжок || На телефоне жми кнопки снизу!",
-        nextLevel: "Уровень пройден! Progress сохранен! Приготовься к уровню ",
-        noPoints: "Недостаточно очков!"
+        nextLevel: "УРОВЕНЬ ПРОЙДЕН!",
+        getReady: "Приготовься к уровню ",
+        noPoints: "Недостаточно очков!",
+        buySpeed: "Улучшить Скорость (50p)",
+        buyJump: "Улучшить Прыжок (50p)",
+        skipLevel: "Пропустить Уровень (100p)"
     }
 };
 
@@ -111,9 +127,20 @@ function saveProgress() {
     updateShopUI();
 }
 
+// --- ATJAUNINĀTA VEIKALA UI SISTĒMA ---
 function updateShopUI() {
+    // Atjaunina līmeņu tekstus blakus uzlabojumiem
     if(speedLvlDisplay) speedLvlDisplay.innerText = "Lvl " + speedLevel;
     if(jumpLvlDisplay) jumpLvlDisplay.innerText = "Lvl " + jumpLevel;
+
+    // Dinamiski atjaunina pašu pogu tekstus atbilstoši valodai
+    const btnSpeed = document.getElementById("btn-speed");
+    const btnJump = document.getElementById("btn-jump");
+    const btnLevel = document.getElementById("btn-level");
+
+    if(btnSpeed) btnSpeed.innerText = translations[currentLang].buySpeed;
+    if(btnJump) btnJump.innerText = translations[currentLang].buyJump;
+    if(btnLevel) btnLevel.innerText = translations[currentLang].skipLevel;
 }
 
 // --- SKINU VEIKALA SISTĒMA ---
@@ -186,6 +213,7 @@ function changeLanguage(lang) {
     });
     saveProgress();
     updateSkinUI();
+    updateShopUI(); // Pievienots, lai valodas maiņa uzreiz pārtulkotu veikalu
 }
 
 const player = {
@@ -196,7 +224,7 @@ const player = {
 
 function clearKeys() { keys = {}; }
 
-// --- BEZGALĪGS LĪMEŅU ĢENERATORS AR VEIKSMES TARIFIEM ---
+// --- BEZGALĪGS LĪMEŅU ĢENERATORS ---
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
@@ -230,7 +258,6 @@ function generateLevel(lvl) {
 
         currentPlatforms.push({ x: platX, y: platY, width: platWidth, height: 18 });
         
-        // --- DINAMISKA MONĒTU TIPA NOTEIKŠANA ---
         let rand = Math.random();
         let type = "normal";
         let value = 10;
@@ -289,7 +316,8 @@ function buyUpgrade(type) {
     if (type === 3) {
         if (score >= 100) {
             score -= 100; currentLevel++; if(scoreValElement) scoreValElement.innerText = score; saveProgress();
-            alert(translations[currentLang].nextLevel + (currentLevel + 1)); clearKeys();
+            levelClearTimer = 180; 
+            clearKeys();
             generateLevel(currentLevel); resetPlayer();
         } else { alert(translations[currentLang].noPoints); clearKeys(); }
     }
@@ -382,10 +410,14 @@ function update() {
         
         currentLevel++; 
         saveProgress(); 
-        alert(translations[currentLang].nextLevel + (currentLevel + 1));
+        levelClearTimer = 180; 
         clearKeys(); 
         generateLevel(currentLevel); 
         resetPlayer();
+    }
+
+    if (levelClearTimer > 0) {
+        levelClearTimer--;
     }
 
     draw();
@@ -444,10 +476,27 @@ function draw() {
     }
     ctx.restore();
 
-    // UI Līmeņa teksts
+    // UI Līmeņa teksts augšā pa kreisi
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 18px Arial";
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
     ctx.fillText(lvlText + (currentLevel + 1), 20, 45);
+
+    // SPĒLES IEKŠĒJAIS PAZIŅOJUMS UZ EKRĀNA
+    if (levelClearTimer > 0) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(0, canvas.height / 2 - 50, canvas.width, 90);
+
+        ctx.fillStyle = "#00ffcc";
+        ctx.font = "bold 28px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(translations[currentLang].nextLevel, canvas.width / 2, canvas.height / 2 - 10);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "16px Arial";
+        ctx.fillText(translations[currentLang].getReady + (currentLevel + 1), canvas.width / 2, canvas.height / 2 + 20);
+        
+        ctx.textAlign = "left";
+    }
 }
 
 function resetPlayer() {
