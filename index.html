@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pepe vs MrBeast Platformeris</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="lang-selector">
+        <button class="lang-btn active" onclick="changeLanguage('lv')">LV</button>
+        <button class="lang-btn" onclick="changeLanguage('en')">EN</button>
+        <button class="lang-btn" onclick="changeLanguage('ru')">RU</button>
+    </div>
+
+    <div class="scoreboard"><span id="score-text">Punkti</span>: <span id="score-val">0</span></div>
+    
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    
+    <div class="controls" id="controls-text">Vadība: Kustība ar bultiņām vai WASD | Lēkt ar Atstarpi (Space)</div>
+
+    <script src="script.js"></script>
+</body>
+</html>
