@@ -9,6 +9,9 @@ let currentLang = 'lv';
 let currentLevel = 0; 
 const TOTAL_LEVELS = 30; 
 
+// --- KAMERAS MAINĪGAIS (EKRĀNA RITINĀŠANAI) ---
+let cameraX = 0;
+
 // --- ATTĒLU IELĀDE ---
 const pepeIdle = new Image();
 pepeIdle.src = 'pepe_idle.png';
@@ -56,7 +59,7 @@ function changeLanguage(lang) {
 }
 
 const player = {
-    x: 50, y: 300, width: 40, height: 50,
+    x: 50, y: 200, width: 40, height: 50,
     speed: 5, velX: 0, velY: 0,
     jumping: false, grounded: false,
     isMoving: false
@@ -68,41 +71,35 @@ let currentPlatforms = [];
 let currentItems = [];
 let currentBoss = { x: 0, y: 0, width: 40, height: 50 };
 
-// --- MATEMĀTISKI SAKĀRTOTS LĪMEŅU ĢENERATORS ---
+// --- MATEMĀTISKI SAKĀRTOTS LĪMEŅU ĢENERATORS AR GARUMU ---
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
+    cameraX = 0; // Atiestatām kameru katra līmeņa sākumā
 
-    // Starta drošības platforma Pēpem
-    currentPlatforms.push({ x: 0, y: 340, width: 120, height: 20 });
+    // Starta platforma
+    currentPlatforms.push({ x: 0, y: 340, width: 150, height: 20 });
 
-    // Nosakām spēles grūtību (no 1 līdz 30)
     let difficultyFactor = lvl / TOTAL_LEVELS;
+    let numPlatforms = 6 + Math.floor(lvl / 4); // Līmeņi kļūst garāki (no 6 līdz 13 platformām)
+    let platWidth = 150 - (lvl * 2);
+    if (platWidth < 75) platWidth = 75; 
 
-    // Aprēķinām platformu skaitu, platumu un attālumus pēc stabilas formulas
-    let numPlatforms = 5 + Math.floor(lvl / 6); // Līmeņos būs no 5 līdz 10 platformām
-    let platWidth = 150 - (lvl * 2.5);          // Platformas kļūst šaurākas (no 150 līdz 75)
-    if (platWidth < 70) platWidth = 70;         // Neļaujam būt pārāk šaurām
-
-    let startX = 170;
+    let startX = 200;
     let startY = 320;
 
     for (let i = 0; i < numPlatforms; i++) {
-        // Aprēķinām loģisku un uzlēcamu attālumu starp platformām
-        let gapX = 70 + (difficultyFactor * 50) + (i * 5); 
-        if (gapX > 140) gapX = 140; // Maksimālais drošais lēciena attālums
+        let gapX = 70 + (difficultyFactor * 45) + (Math.sin(i) * 10); 
+        if (gapX > 135) gapX = 135; 
 
-        // Veidojam skaistu viļņveida vai kāpņu augstuma maiņu (izmantojam Sinusīdu stabilitātei)
-        let wave = Math.sin(i + lvl) * 60; 
-        let platY = startY + wave - (difficultyFactor * i * 10);
+        let wave = Math.sin(i + lvl) * 50; 
+        let platY = startY + wave - (difficultyFactor * i * 5);
 
-        // Drošības rāmji, lai platformas neiziet no ekrāna
-        if (platY < 120) platY = 120;
+        if (platY < 130) platY = 130;
         if (platY > 360) platY = 340;
 
         let platX = startX + (i * (platWidth + gapX));
 
-        // Pievienojam platformu
         currentPlatforms.push({
             x: platX,
             y: platY,
@@ -110,7 +107,7 @@ function generateLevel(lvl) {
             height: 15
         });
 
-        // Uz katras platformas smuki nocentrējam monētu
+        // Monēta virs platformas
         currentItems.push({
             x: platX + (platWidth / 2) - 7,
             y: platY - 25,
@@ -120,12 +117,20 @@ function generateLevel(lvl) {
         });
     }
 
-    // Gala platforma priekš MrBeast
+    // Gala stabila platforma priekš MrBeast
     let lastPlat = currentPlatforms[currentPlatforms.length - 1];
+    let finalPlatX = lastPlat.x + lastPlat.width + 90;
     
-    // Novietojam MrBeast tieši pēdējās platformas vidū
-    currentBoss.x = lastPlat.x + (lastPlat.width / 2) - 20;
-    currentBoss.y = lastPlat.y - currentBoss.height;
+    currentPlatforms.push({
+        x: finalPlatX,
+        y: 250,
+        width: 120,
+        height: 20
+    });
+
+    // Novietojam MrBeast uz pašas pēdējās platformas
+    currentBoss.x = finalPlatX + 40;
+    currentBoss.y = 250 - currentBoss.height;
 }
 
 window.addEventListener("keydown", (e) => { keys[e.key] = true; });
@@ -186,7 +191,18 @@ function update() {
     player.x += player.velX;
     player.y += player.velY;
 
-    // Ja nokrīt bedrē, Pēpe atgriežas startā
+    // Neļaujam Pēpem aiziet aiz ekrāna kreisās malas atpakaļgaitā
+    if (player.x < 0) player.x = 0;
+
+    // --- KAMERAS LOGIKA ---
+    // Kamera sāk sekot Pēpem, kad viņš aiziet tālāk par ekrāna vidu (300px)
+    if (player.x > 300) {
+        cameraX = player.x - 300;
+    } else {
+        cameraX = 0;
+    }
+
+    // Ja nokrīt bedrē
     if (player.y > canvas.height) { resetPlayer(); }
 
     // Monētas
@@ -199,7 +215,7 @@ function update() {
         }
     });
 
-    // Sadursme ar MrBeast (Uzvara / Nākamais līmenis)
+    // Sadursme ar MrBeast
     if (player.x < currentBoss.x + currentBoss.width && player.x + player.width > currentBoss.x &&
         player.y < currentBoss.y + currentBoss.height && player.y + player.height > currentBoss.y) {
         
@@ -221,22 +237,26 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Kosmosa fons
+    // Fons (Nekustīgs, lai izskatās dabiski)
     ctx.fillStyle = "#0b0e14";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Zvaigznes fonā
+    // Zvaigznes (Ar nelielu paralakses efektu dziļumam)
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(100, 80, 2, 2); ctx.fillRect(300, 50, 3, 3);
-    ctx.fillRect(550, 120, 2, 2); ctx.fillRect(700, 70, 3, 3);
-    ctx.fillRect(450, 300, 2, 2); ctx.fillRect(150, 220, 1, 1);
+    ctx.fillRect(100 - cameraX*0.1, 80, 2, 2); 
+    ctx.fillRect(300 - cameraX*0.1, 50, 3, 3);
+    ctx.fillRect(550 - cameraX*0.1, 120, 2, 2); 
+    ctx.fillRect(700 - cameraX*0.1, 70, 3, 3);
+    ctx.fillRect(900 - cameraX*0.1, 150, 2, 2);
 
-    // Platformas ar glītu sci-fi/kosmosa dizainu (pelēkas ar zilu neonu)
+    // --- VISU SPĒLES ELEMENTU ZĪMĒŠANA AR (-cameraX) NOBĪDI ---
+    
+    // Platformas
     currentPlatforms.forEach(plat => {
-        ctx.fillStyle = "#2c3e50"; // Tumši pelēks asteroīda/bāzes bloks
-        ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
-        ctx.fillStyle = "#00d2ff"; // Zils neona līnija virspusē kosmosa noskaņai
-        ctx.fillRect(plat.x, plat.y, plat.width, 3);
+        ctx.fillStyle = "#2c3e50"; 
+        ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
+        ctx.fillStyle = "#00d2ff"; 
+        ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 3);
     });
 
     // Monētas
@@ -244,32 +264,32 @@ function draw() {
     currentItems.forEach(item => {
         if (!item.collected) {
             ctx.beginPath();
-            ctx.arc(item.x + item.width/2, item.y + item.height/2, item.width/2, 0, Math.PI * 2);
+            ctx.arc(item.x + item.width/2 - cameraX, item.y + item.height/2, item.width/2, 0, Math.PI * 2);
             ctx.fill();
         }
     });
 
     // MrBeast
     ctx.fillStyle = "#002fa7";
-    ctx.fillRect(currentBoss.x, currentBoss.y, currentBoss.width, currentBoss.height);
+    ctx.fillRect(currentBoss.x - cameraX, currentBoss.y, currentBoss.width, currentBoss.height);
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 12px Arial";
-    ctx.fillText("MrBeast", currentBoss.x - 5, currentBoss.y - 8);
+    ctx.fillText("MrBeast", currentBoss.x - cameraX - 5, currentBoss.y - 8);
 
     // Pēpe kosmonauts
     ctx.save();
     let currentImg = player.isMoving ? ((currentRunFrame === 1) ? pepeRun1 : pepeRun2) : pepeIdle;
 
     if (facingDirection === -1) {
-        ctx.translate(player.x + player.width, player.y);
+        ctx.translate(player.x - cameraX + player.width, player.y);
         ctx.scale(-1, 1);
         ctx.drawImage(currentImg, 0, 0, player.width, player.height);
     } else {
-        ctx.drawImage(currentImg, player.x, player.y, player.width, player.height);
+        ctx.drawImage(currentImg, player.x - cameraX, player.y, player.width, player.height);
     }
     ctx.restore();
 
-    // Līmeņa teksts stūrī
+    // UI (Teksts stūrī paliek uz vietas un nekustas līdzi kamerai)
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 16px Arial";
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
@@ -277,9 +297,8 @@ function draw() {
 }
 
 function resetPlayer() {
-    // Spēlētājs vienmēr sāk uz pirmās platformas
-    player.x = 30; 
-    player.y = 250; 
+    player.x = 40; 
+    player.y = 200; 
     player.velX = 0; 
     player.velY = 0;
 }
@@ -293,5 +312,4 @@ function resetGame() {
 }
 
 generateLevel(currentLevel);
-resetPlayer();
 update();
