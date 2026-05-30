@@ -315,14 +315,17 @@ setTimeout(() => {
 
 function update() {
     player.isMoving = false;
-    let currentSpeed = player.baseSpeed + (speedLevel * 0.5);
+    
+    // FIKSĒTS: Ātrums palielinās jūtami (+1.0 katram lvl) un uzlabots uzrāviena spēks
+    let currentSpeed = player.baseSpeed + (speedLevel * 1.0); 
+    let accelPower = 1.2 + (speedLevel * 0.25);              
 
     if (keys["ArrowRight"] || keys["d"] || keys["D"]) { 
-        if (player.velX < currentSpeed) player.velX += 1.2; 
+        if (player.velX < currentSpeed) player.velX += accelPower; 
         player.isMoving = true; facingDirection = 1; 
     }
     if (keys["ArrowLeft"] || keys["a"] || keys["A"]) { 
-        if (player.velX > -currentSpeed) player.velX -= 1.2; 
+        if (player.velX > -currentSpeed) player.velX -= accelPower; 
         player.isMoving = true; facingDirection = -1; 
     }
     
@@ -344,7 +347,8 @@ function update() {
         player.jumping = true; player.grounded = false; player.velY = currentJumpForce;
     }
 
-    player.velX *= 0.75;
+    // FIKSĒTS: Berze nedaudz samazināta līdz 0.82 (bija 0.75), lai tēls spētu fiziski sasniegt savu jauno max ātrumu
+    player.velX *= 0.82;
     player.velY += 0.55; 
     player.grounded = false;
 
