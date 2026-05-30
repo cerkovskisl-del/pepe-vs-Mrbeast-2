@@ -31,6 +31,9 @@ let currentBgColor = "#0b0e14";
 let currentPlatformColor = "#2c3e50";
 let currentPlatformTopColor = "#00d2ff";
 
+// Mainīgais plūstošajai krāsu pārejai (Parkour režīmā)
+let parkourHue = 0;
+
 // --- MAINĪGAIS SPĒLES IEKŠĒJAM PAZIŅOJUMAM ---
 let levelClearTimer = 0; 
 
@@ -205,7 +208,6 @@ function switchMode(mode) {
     updateShopUI();
 }
 
-// --- DINAMISKAIS UN ATŠĶIRĪGAIS LĪMEŅU ĢENERATORS ---
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
@@ -217,12 +219,11 @@ function generateLevel(lvl) {
     visitedPlatforms.push(0); 
 
     if (gameMode === "normal") {
-        // 1. VIZUĀLĀS GALAXY ZONAS (Mainās krāsas ik pēc 3 līmeņiem)
         let zone = Math.floor(lvl / 3) % 4;
-        if (zone === 0) { currentBgColor = "#0b0e14"; currentPlatformColor = "#2c3e50"; currentPlatformTopColor = "#00d2ff"; } // Klasiskais kosmoss
-        else if (zone === 1) { currentBgColor = "#1a0b2e"; currentPlatformColor = "#4a154b"; currentPlatformTopColor = "#ff007f"; } // Violetā miglāja zona
-        else if (zone === 2) { currentBgColor = "#051c14"; currentPlatformColor = "#113f2a"; currentPlatformTopColor = "#00ff66"; } // Zaļo asteroīdu lauks
-        else { currentBgColor = "#240909"; currentPlatformColor = "#5c1d1d"; currentPlatformTopColor = "#ffcc00"; } // Sarkanā giganta saule
+        if (zone === 0) { currentBgColor = "#0b0e14"; currentPlatformColor = "#2c3e50"; currentPlatformTopColor = "#00d2ff"; } 
+        else if (zone === 1) { currentBgColor = "#1a0b2e"; currentPlatformColor = "#4a154b"; currentPlatformTopColor = "#ff007f"; } 
+        else if (zone === 2) { currentBgColor = "#051c14"; currentPlatformColor = "#113f2a"; currentPlatformTopColor = "#00ff66"; } 
+        else { currentBgColor = "#240909"; currentPlatformColor = "#5c1d1d"; currentPlatformTopColor = "#ffcc00"; } 
 
         let capLevel = Math.min(lvl, 40);
         let difficultyFactor = capLevel / 40; 
@@ -232,9 +233,7 @@ function generateLevel(lvl) {
 
         let startX = 250;
         let lastNormalY = 400; 
-
-        // 2. ATŠĶIRĪGI STRUKTŪRAS TIPI ATKARĪBĀ NO LĪMEŅA
-        let levelType = lvl % 3; // Var būt 0, 1 vai 2
+        let levelType = lvl % 3; 
 
         for (let i = 0; i < numPlatforms; i++) {
             let platWidth = 150 - (difficultyFactor * 45);
@@ -244,27 +243,23 @@ function generateLevel(lvl) {
             let platY = lastNormalY;
 
             if (levelType === 0) {
-                // TIPS 0: "ZIG-ZAG" Viļņi (Lēkā augšā / lejā plūstoši)
                 let changeY = (i % 2 === 0) ? -50 : 50;
                 platY = lastNormalY + changeY;
             } 
             else if (levelType === 1) {
-                // TIPS 1: "KĀPNES AUGŠUP" (Trase iet uz augšu un beigās nokrīt)
                 platY = lastNormalY - 25;
-                if (platY < 190) platY = 380; // Reset uz leju, ja par augstu
+                if (platY < 190) platY = 380; 
             } 
             else {
-                // TIPS 2: "MIKSĒTAIS" (Pamīšus viena gara un viena maza platforma)
                 if (i % 2 === 0) {
-                    platWidth += 40; // Īpaši gara platforma
+                    platWidth += 40; 
                     platY = lastNormalY + 20;
                 } else {
-                    platWidth -= 25; // Īpaši maza un augsta platforma
+                    platWidth -= 25; 
                     platY = lastNormalY - 45;
                 }
             }
 
-            // Drošības robežas augstumam
             if (platY < 180) platY = 180;
             if (platY > 430) platY = 430;
 
@@ -274,7 +269,6 @@ function generateLevel(lvl) {
             startX += platWidth + gapX;
             lastNormalY = platY;
 
-            // Monētu izvietošana
             let rand = Math.random();
             let type = "normal"; let value = 10;
             let cosmicChance = Math.min(0.05 + (lvl * 0.01), 0.35); 
@@ -289,7 +283,6 @@ function generateLevel(lvl) {
             });
         }
 
-        // Finiša platforma
         let finalPlatX = startX + 20;
         let finalPlatY = 330;
         currentPlatforms.push({ id: currentPlatforms.length, x: finalPlatX, y: finalPlatY, width: 150, height: 25 });
@@ -297,11 +290,7 @@ function generateLevel(lvl) {
         currentBoss.y = finalPlatY - currentBoss.height;
 
     } else {
-        // PARKOUR REŽĪMS: Neitrālas kosmosa krāsas
-        currentBgColor = "#0b0e14";
-        currentPlatformColor = "#2c3e50";
-        currentPlatformTopColor = "#00d2ff";
-
+        // PARKOUR REŽĪMS: Sākuma vērtības
         lastParkourX = 260;
         lastParkourY = 400;
         for (let i = 0; i < 12; i++) {
@@ -487,6 +476,18 @@ function update() {
         }
     }
 
+    // PALIEĻINĀM HUE VĒRTĪBU PLŪSTOŠAI PĀREJAI (No 0 līdz 360 grādiem)
+    if (gameMode === "parkour") {
+        parkourHue = (parkourHue + 0.3) % 360; 
+        
+        // Fons maigi mainās tumšajos toņos (Lightness = 7%)
+        currentBgColor = `hsl(${parkourHue}, 35%, 7%)`;
+        // Platformas pamata krāsa (Lightness = 22%)
+        currentPlatformColor = `hsl(${parkourHue}, 30%, 22%)`;
+        // Platformas augšpuse spilgti spīd (Lightness = 55%)
+        currentPlatformTopColor = `hsl(${parkourHue}, 100%, 55%)`;
+    }
+
     if (levelClearTimer > 0) { levelClearTimer--; }
 
     draw();
@@ -496,16 +497,13 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // DINAMISKĀ FONA KRĀSA
     ctx.fillStyle = currentBgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Zvaigznes fonā
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(100 - cameraX*0.1, 80, 2, 2); ctx.fillRect(300 - cameraX*0.1, 50, 3, 3);
     ctx.fillRect(550 - cameraX*0.1, 120, 2, 2); ctx.fillRect(700 - cameraX*0.1, 200, 3, 3);
     ctx.fillRect(850 - cameraX*0.1, 70, 2, 2);
 
-    // DINAMISKĀS PLATFORMU KRĀSAS
     currentPlatforms.forEach(plat => {
         ctx.fillStyle = currentPlatformColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
         ctx.fillStyle = currentPlatformTopColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
