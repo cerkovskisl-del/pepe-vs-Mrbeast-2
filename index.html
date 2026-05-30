@@ -2,23 +2,62 @@
 <html lang="lv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pepe vs MrBeast Platformeris</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Pepe Kosmosā</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="lang-selector">
+    <div class="lang-container">
         <button class="lang-btn active" onclick="changeLanguage('lv')">LV</button>
         <button class="lang-btn" onclick="changeLanguage('en')">EN</button>
         <button class="lang-btn" onclick="changeLanguage('ru')">RU</button>
     </div>
 
-    <div class="scoreboard"><span id="score-text">Punkti</span>: <span id="score-val">0</span></div>
-    
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
-    
-    <div class="controls" id="controls-text">Vadība: Kustība ar bultiņām vai WASD | Lēkt ar Atstarpi (Space)</div>
+    <div class="game-wrapper">
+        
+        <div class="canvas-area">
+            <div class="hud">
+                <span id="score-text">Punkti</span>: <span id="score-val">0</span>
+            </div>
+            <canvas id="gameCanvas" width="1000" height="500"></canvas>
+        </div>
+
+        <div class="shop-sidebar">
+            <h3 id="shop-title">VEIKALS</h3>
+            
+            <button class="shop-item-btn" onclick="buyUpgrade(1)">
+                <div class="shop-item-name" id="shop-speed-text">+Ātrums</div>
+                <div class="shop-item-lvl" id="speed-lvl-display">Lvl 0</div>
+                <div class="shop-item-price">50p</div>
+            </button>
+
+            <button class="shop-item-btn" onclick="buyUpgrade(2)">
+                <div class="shop-item-name" id="shop-jump-text">+Lēciens</div>
+                <div class="shop-item-lvl" id="jump-lvl-display">Lvl 0</div>
+                <div class="shop-item-price">50p</div>
+            </button>
+
+            <button class="shop-item-btn skip-btn" onclick="buyUpgrade(3)">
+                <div class="shop-item-name" id="shop-skip-text">Izlaist Līmeni</div>
+                <div class="shop-item-price">100p</div>
+            </button>
+
+            <button class="reset-progress-btn" onclick="clearSavedProgress()">Reset Game</button>
+        </div>
+    </div>
+
+    <div class="mobile-controls">
+        <div class="move-buttons">
+            <button id="btn-left">◀</button>
+            <button id="btn-right">▶</button>
+        </div>
+        <button id="btn-jump">LĒKT</button>
+    </div>
+
+    <div class="controls-info" id="controls-text">
+        Vadība: Bultiņas/WASD = Kustība | Atstarpe = Lēkt
+    </div>
 
     <script src="script.js"></script>
 </body>
