@@ -4,10 +4,14 @@ const scoreValElement = document.getElementById("score-val");
 const scoreTextElement = document.getElementById("score-text");
 const controlsTextElement = document.getElementById("controls-text");
 
-// --- PROGRESSA IELĀDE NO ATMIŅAS (localStorage) ---
+// --- PROGRESSA IELĀDE NO LOCALSTORAGE ---
 let score = parseInt(localStorage.getItem("pepe_score")) || 0;
 let currentLevel = parseInt(localStorage.getItem("pepe_level")) || 0;
 let currentLang = localStorage.getItem("pepe_lang") || 'lv';
+
+// --- UPGRADE STATISTIKA (Ielādē saglabātos uzlabojumus vai sākuma vērtības) ---
+let speedLevel = parseInt(localStorage.getItem("pepe_speed_lvl")) || 0;
+let jumpLevel = parseInt(localStorage.getItem("pepe_jump_lvl")) || 0;
 
 scoreValElement.innerText = score;
 
@@ -17,14 +21,10 @@ let cameraX = 0;
 // --- ATTĒLU IELĀDE ---
 const pepeIdle = new Image();
 pepeIdle.src = 'pepe_idle.png';
-
 const pepeRun1 = new Image();
 pepeRun1.src = 'pepe_run1.png';
-
 const pepeRun2 = new Image();
 pepeRun2.src = 'pepe_run2.png';
-
-// Jaunais MrBeast attēls (modelis)
 const mrBeastImg = new Image();
 mrBeastImg.src = 'mrbeast.png'; 
 
@@ -36,21 +36,27 @@ let currentRunFrame = 1;
 const translations = {
     lv: {
         score: "Punkti",
-        controls: "Vadība: Kustība ar bultiņām vai WASD | Lēkt ar Atstarpi (Space)",
+        controls: "Vadība: Bultiņas/WASD = Kustība | Atstarpe = Lēkt || VEIKALS: Spied [1] Ātrums, [2] Lēciens, [3] Izlaist Lvl",
         nextLevel: "Līmenis pabeigts! Progres saglabāts. Gatavojies līmenim: ",
-        win: "Apsveicu! Tu izgāji visus 30 līmeņus! Kopējie punkti: "
+        win: "Apsveicu! Tu izgāji visus 30 līmeņus! Kopējie punkti: ",
+        noPoints: "Tev nepietiek punktu!",
+        bought: "Nopirkts!"
     },
     en: {
         score: "Points",
-        controls: "Controls: Move with Arrows or WASD | Jump with Space",
+        controls: "Controls: Arrows/WASD = Move | Space = Jump || SHOP: Press [1] Speed, [2] Jump, [3] Skip Lvl",
         nextLevel: "Level cleared! Progress saved. Get ready for Level ",
-        win: "Congratulations! You beat all 30 levels! Total points: "
+        win: "Congratulations! You beat all 30 levels! Total points: ",
+        noPoints: "Not enough points!",
+        bought: "Purchased!"
     },
     ru: {
         score: "Очки",
-        controls: "Управление: Движение стрелками или WASD | Прыжок через Пробел",
+        controls: "Управление: Стрелки/WASD = Бег | Пробел = Прыжок || МАГАЗИН: Жми [1] Скорость, [2] Прыжок, [3] Пропустить Lvl",
         nextLevel: "Уровень пройден! Прогресс сохранен! Приготовься к уровню ",
-        win: "Поздравляем! Ты прошёл все 30 уровней! Всего очков: "
+        win: "Поздравляем! Ты прошёл все 30 уровней! Всего очков: ",
+        noPoints: "Недостаточно очков!",
+        bought: "Куплено!"
     }
 };
 
@@ -58,6 +64,8 @@ function saveProgress() {
     localStorage.setItem("pepe_level", currentLevel);
     localStorage.setItem("pepe_score", score);
     localStorage.setItem("pepe_lang", currentLang);
+    localStorage.setItem("pepe_speed_lvl", speedLevel);
+    localStorage.setItem("pepe_jump_lvl", jumpLevel);
 }
 
 function changeLanguage(lang) {
@@ -78,18 +86,20 @@ function changeLanguage(lang) {
     saveProgress();
 }
 
+// Spēlētāja sākuma bāze + klāt pieskaitītie upgrade līmeņi
 const player = {
-    x: 50, y: 200, width: 40, height: 50,
-    speed: 5, velX: 0, velY: 0,
+    x: 40, y: 200, width: 40, height: 50,
+    baseSpeed: 5,
+    baseJump: -11,
+    velX: 0, velY: 0,
     jumping: false, grounded: false,
     isMoving: false
 };
 
 const keys = {};
-
 let currentPlatforms = [];
 let currentItems = [];
-let currentBoss = { x: 0, y: 0, width: 40, height: 50 }; // Varonis saglabā savus izmērus attēlam
+let currentBoss = { x: 0, y: 0, width: 40, height: 50 };
 
 function generateLevel(lvl) {
     currentPlatforms = [];
@@ -148,19 +158,71 @@ function generateLevel(lvl) {
     currentBoss.y = 250 - currentBoss.height;
 }
 
-window.addEventListener("keydown", (e) => { keys[e.key] = true; });
+// --- VEIKALA PIRKUMU KLAUSĪTĀJS (Spiežot 1, 2 vai 3) ---
+window.addEventListener("keydown", (e) => { 
+    keys[e.key] = true; 
+
+    // [1] Pērk ātrumu (Maksā 50)
+    if (e.key === "1") {
+        if (score >= 50) {
+            score -= 50;
+            speedLevel++;
+            scoreValElement.innerText = score;
+            saveProgress();
+            alert(translations[currentLang].bought + " (+1 Rindas ātrums)");
+        } else {
+            alert(translations[currentLang].noPoints);
+        }
+    }
+
+    // [2] Pērk lēcienu (Maksā 50)
+    if (e.key === "2") {
+        if (score >= 50) {
+            score -= 50;
+            jumpLevel++;
+            scoreValElement.innerText = score;
+            saveProgress();
+            alert(translations[currentLang].bought + " (+1 Lēciena jauda)");
+        } else {
+            alert(translations[currentLang].noPoints);
+        }
+    }
+
+    // [3] Pērk jaunu līmeni (Maksā 100)
+    if (e.key === "3") {
+        if (score >= 100) {
+            if (currentLevel < TOTAL_LEVELS - 1) {
+                score -= 100;
+                currentLevel++;
+                scoreValElement.innerText = score;
+                saveProgress();
+                alert(translations[currentLang].nextLevel + (currentLevel + 1));
+                generateLevel(currentLevel);
+                resetPlayer();
+            } else {
+                alert("Tu jau esi pēdējā līmenī!");
+            }
+        } else {
+            alert(translations[currentLang].noPoints);
+        }
+    }
+});
+
 window.addEventListener("keyup", (e) => { keys[e.key] = false; });
 
 function update() {
     player.isMoving = false;
 
+    // Aktuālais ātrums = bāzes ātrums + nopirktie līmeņi (katrs dod +0.4 ātruma)
+    let currentSpeed = player.baseSpeed + (speedLevel * 0.4);
+
     if (keys["ArrowRight"] || keys["d"] || keys["D"]) { 
-        if (player.velX < player.speed) player.velX++; 
+        if (player.velX < currentSpeed) player.velX += 1; 
         player.isMoving = true;
         facingDirection = 1; 
     }
     if (keys["ArrowLeft"] || keys["a"] || keys["A"]) { 
-        if (player.velX > -player.speed) player.velX--; 
+        if (player.velX > -currentSpeed) player.velX -= 1; 
         player.isMoving = true;
         facingDirection = -1; 
     }
@@ -178,10 +240,13 @@ function update() {
         currentRunFrame = 1;
     }
 
+    // Aktuālais lēciens = bāzes lēciens - nopirktie līmeņi (katrs pieliek -0.3 jaudas uz augšu)
+    let currentJumpForce = player.baseJump - (jumpLevel * 0.3);
+
     if ((keys["ArrowUp"] || keys["w"] || keys["W"] || keys[" "]) && !player.jumping && player.grounded) {
         player.jumping = true;
         player.grounded = false;
-        player.velY = -11;
+        player.velY = currentJumpForce;
     }
 
     player.velX *= 0.8;
@@ -272,7 +337,6 @@ function draw() {
         }
     });
 
-    // --- ŠEIT ZĪMĒJAM ĪSTO MRBEAST ATTĒLU ---
     ctx.drawImage(mrBeastImg, currentBoss.x - cameraX, currentBoss.y, currentBoss.width, currentBoss.height);
     
     ctx.fillStyle = "#ffffff";
@@ -292,10 +356,25 @@ function draw() {
     }
     ctx.restore();
 
+    // --- INTERFEISS (UI) UN VEIKALA PANELIS AUGŠĀ ---
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // Puscaurspīdīgs rāmis veikalam
+    ctx.fillRect(450, 5, 340, 55);
+    ctx.strokeStyle = "#00d2ff";
+    ctx.strokeRect(450, 5, 340, 55);
+
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 16px Arial";
+    ctx.font = "bold 14px Arial";
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
     ctx.fillText(lvlText + (currentLevel + 1) + " / 30", 20, 30);
+
+    // Veikala preču teksti uz ekrāna
+    ctx.font = "11px Arial";
+    ctx.fillStyle = "#FFD700";
+    ctx.fillText("SHOP (Spied pogu):", 460, 20);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("[1] +Ātrums (Lvl " + speedLevel + ") - 50p", 460, 35);
+    ctx.fillText("[2] +Lēciens (Lvl " + jumpLevel + ") - 50p", 460, 50);
+    ctx.fillText("[3] Izlaist Līmeni - 100p", 640, 35);
 }
 
 function resetPlayer() {
@@ -306,10 +385,11 @@ function resetPlayer() {
 }
 
 function clearSavedProgress() {
-    localStorage.removeItem("pepe_level");
-    localStorage.removeItem("pepe_score");
+    localStorage.clear();
     currentLevel = 0;
     score = 0;
+    speedLevel = 0;
+    jumpLevel = 0;
     scoreValElement.innerText = score;
     generateLevel(currentLevel);
     resetPlayer();
