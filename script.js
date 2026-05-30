@@ -31,8 +31,8 @@ let currentBgColor = "#0b0e14";
 let currentPlatformColor = "#2c3e50";
 let currentPlatformTopColor = "#00d2ff";
 
-// Mainīgais plūstošajai krāsu pārejai (Parkour režīmā)
-let parkourHue = 0;
+// Galvenais laika skaitītājs krāsu animācijai bezgalīgajā režīmā
+let parkourTime = 0;
 
 // --- MAINĪGAIS SPĒLES IEKŠĒJAM PAZIŅOJUMAM ---
 let levelClearTimer = 0; 
@@ -214,7 +214,7 @@ function generateLevel(lvl) {
     visitedPlatforms = [];
     cameraX = 0; 
 
-    // Sākuma platforma
+    // Sākuma drošā platforma
     currentPlatforms.push({ id: 0, x: 0, y: 440, width: 200, height: 25 });
     visitedPlatforms.push(0); 
 
@@ -291,6 +291,7 @@ function generateLevel(lvl) {
 
     } else {
         // PARKOUR REŽĪMS: Sākuma vērtības
+        currentBgColor = "#0b0e14";
         lastParkourX = 260;
         lastParkourY = 400;
         for (let i = 0; i < 12; i++) {
@@ -476,16 +477,10 @@ function update() {
         }
     }
 
-    // PALIEĻINĀM HUE VĒRTĪBU PLŪSTOŠAI PĀREJAI (No 0 līdz 360 grādiem)
+    // Palielinām laiku plūstošai animācijai
     if (gameMode === "parkour") {
-        parkourHue = (parkourHue + 0.3) % 360; 
-        
-        // Fons maigi mainās tumšajos toņos (Lightness = 7%)
-        currentBgColor = `hsl(${parkourHue}, 35%, 7%)`;
-        // Platformas pamata krāsa (Lightness = 22%)
-        currentPlatformColor = `hsl(${parkourHue}, 30%, 22%)`;
-        // Platformas augšpuse spilgti spīd (Lightness = 55%)
-        currentPlatformTopColor = `hsl(${parkourHue}, 100%, 55%)`;
+        parkourTime = (parkourTime + 0.4) % 360; 
+        currentBgColor = `hsl(${parkourTime}, 30%, 7%)`; // Maigi mainīgs tumšais fons
     }
 
     if (levelClearTimer > 0) { levelClearTimer--; }
@@ -504,9 +499,22 @@ function draw() {
     ctx.fillRect(550 - cameraX*0.1, 120, 2, 2); ctx.fillRect(700 - cameraX*0.1, 200, 3, 3);
     ctx.fillRect(850 - cameraX*0.1, 70, 2, 2);
 
-    currentPlatforms.forEach(plat => {
-        ctx.fillStyle = currentPlatformColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
-        ctx.fillStyle = currentPlatformTopColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
+    // CRASAS MAIŅA KATRAI PLATFORMAI ATSEVIŠĶI
+    currentPlatforms.forEach((plat, index) => {
+        if (gameMode === "parkour") {
+            // Katrai platformai pieliekam klāt tās indeksu pomnožitu uz 20, lai katrai būtu cita krāsa!
+            let individualHue = (parkourTime + index * 20) % 360;
+            
+            ctx.fillStyle = `hsl(${individualHue}, 35%, 22%)`; // Platformas apakša
+            ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
+            
+            ctx.fillStyle = `hsl(${individualHue}, 100%, 55%)`; // Platformas spīdošā augša
+            ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
+        } else {
+            // Parastajos līmeņos paliek stabilās zonas krāsas
+            ctx.fillStyle = currentPlatformColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, plat.height);
+            ctx.fillStyle = currentPlatformTopColor; ctx.fillRect(plat.x - cameraX, plat.y, plat.width, 4);
+        }
     });
 
     if (gameMode === "normal") {
