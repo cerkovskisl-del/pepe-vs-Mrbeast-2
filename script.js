@@ -4,7 +4,6 @@ const scoreValElement = document.getElementById("score-val");
 const scoreTextElement = document.getElementById("score-text");
 const controlsTextElement = document.getElementById("controls-text");
 
-// --- VEIKALA VIZUĀLIE ELEMENTI MĀJASLAPĀ ---
 const speedLvlDisplay = document.getElementById("speed-lvl-display");
 const jumpLvlDisplay = document.getElementById("jump-lvl-display");
 
@@ -13,67 +12,83 @@ let score = parseInt(localStorage.getItem("pepe_score")) || 0;
 let currentLevel = parseInt(localStorage.getItem("pepe_level")) || 0;
 let currentLang = localStorage.getItem("pepe_lang") || 'lv';
 
-// --- UPGRADE STATISTIKA ---
 let speedLevel = parseInt(localStorage.getItem("pepe_speed_lvl")) || 0;
 let jumpLevel = parseInt(localStorage.getItem("pepe_jump_lvl")) || 0;
 
-scoreValElement.innerText = score;
+if(scoreValElement) scoreValElement.innerText = score;
 
 const TOTAL_LEVELS = 30; 
 let cameraX = 0;
 
-// --- ATTĒLU IELĀDE AR DROŠĪBAS KONTROLI ---
+// --- DATORA TAUSTIŅU GLABĀTUVE ---
+let keys = {};
+let currentPlatforms = [];
+let currentItems = [];
+let currentBoss = { x: 0, y: 0, width: 45, height: 60 };
+
+// --- ATTĒLU IELĀDE (IZMANTO TAVUS REĀLOS FAILUS NO GITHUB) ---
 let loadedImagesCount = 0;
-const totalImagesNeeded = 2; // Pepe spritesheet un MrBeast attēls
+const totalImagesNeeded = 4; // 3 Pepe bildes + 1 MrBeast bilde
 
 function imageLoaded() {
     loadedImagesCount++;
     if (loadedImagesCount === totalImagesNeeded) {
-        // Tikai tad, kad abi attēli ir 100% ielādēti, palaidīsies spēle
+        // Kad visi 4 attēli veiksmīgi ielādēti, spēle automātiski aiziet
         startGame();
     }
 }
 
-// 1. Pepe animāciju lapa (spritesheet)
-const pepeSpritesheet = new Image();
-pepeSpritesheet.src = 'pepe_spritesheet.png'; // Pārliecinies, ka tavs spritesheet fails saucas šādi
-pepeSpritesheet.onload = imageLoaded;
-pepeSpritesheet.onerror = function() {
-    console.error("Kļūda: Nevarēja ielādēt 'pepe_spritesheet.png'. Pārbaudi faila nosaukumu un mapi!");
-};
+// 1. Pepe stāvēšanas bilde
+const imgPepeIdle = new Image();
+imgPepeIdle.src = 'pepe_idle.png';
+imgPepeIdle.onload = imageLoaded;
+imgPepeIdle.onerror = function() { console.error("Trūkst pepe_idle.png"); imageLoaded(); };
 
-// 2. MrBeast attēls
+// 2. Pepe skriešanas bilde 1
+const imgPepeRun1 = new Image();
+imgPepeRun1.src = 'pepe_run1.png';
+imgPepeRun1.onload = imageLoaded;
+imgPepeRun1.onerror = function() { console.error("Trūkst pepe_run1.png"); imageLoaded(); };
+
+// 3. Pepe skriešanas bilde 2
+const imgPepeRun2 = new Image();
+imgPepeRun2.src = 'pepe_run2.png';
+imgPepeRun2.onload = imageLoaded;
+imgPepeRun2.onerror = function() { console.error("Trūkst pepe_run2.png"); imageLoaded(); };
+
+// 4. MrBeast bilde
 const mrBeastImg = new Image();
 mrBeastImg.src = 'mrbeast.png';
 mrBeastImg.onload = imageLoaded;
-mrBeastImg.onerror = function() {
-    console.error("Kļūda: Nevarēja ielādēt 'mrbeast.png'. Pārbaudi faila nosaukumu un mapi!");
-};
+mrBeastImg.onerror = function() { console.error("Trūkst mrbeast.png"); imageLoaded(); };
 
 
 // --- ANIMĀCIJAS MAINĪGIE ---
 let facingDirection = 1;       
 let animationTimer = 0;        
-let currentRunFrame = 0; // Kadra indekss rindā (0, 1, 2, 3...)
+let currentRunFrame = 1; 
 
 const translations = {
     lv: {
         score: "Punkti",
         controls: "Vadība: Bultiņas/WASD = Kustība | Atstarpe = Lēkt || Telefonā izmanto pogas apakšā!",
-        nextLevel: "Līmenis pabeigts! Progres saglabāts. Gatavojies līmenim: ",
-        win: "Apsveicu! Tu izgāji visus 30 līmeņus! Kopējie punkti: "
+        nextLevel: "Līmenis pabeigts! Progress saglabāts. Gatavojies līmenim: ",
+        win: "Apsveicu! Tu izgāji visus 30 līmeņus! Kopējie punkti: ",
+        noPoints: "Tev nepietiek punktu!"
     },
     en: {
         score: "Points",
         controls: "Controls: Arrows/WASD = Move | Space = Jump || On mobile use buttons below!",
         nextLevel: "Level cleared! Progress saved. Get ready for Level ",
-        win: "Congratulations! You beat all 30 levels! Total points: "
+        win: "Congratulations! You beat all 30 levels! Total points: ",
+        noPoints: "Not enough points!"
     },
     ru: {
         score: "Очки",
         controls: "Управление: Стрелки/WASD = Бег | Пробел = Прыжок || На телефоне жми кнопки снизу!",
         nextLevel: "Уровень пройден! Прогресс сохранен! Приготовься к уровню ",
-        win: "Поздравляем! Ты прошёл все 30 уровней! Всего очков: "
+        win: "Поздравляем! Ты прошёл все 30 уровней! Всего очков: ",
+        noPoints: "Недостаточно очков!"
     }
 };
 
@@ -93,12 +108,11 @@ function updateShopUI() {
 
 function changeLanguage(lang) {
     currentLang = lang;
-    scoreTextElement.innerText = translations[lang].score;
-    controlsTextElement.innerText = translations[lang].controls;
+    if(scoreTextElement) scoreTextElement.innerText = translations[lang].score;
+    if(controlsTextElement) controlsTextElement.innerText = translations[lang].controls;
 
     const buttons = document.querySelectorAll('.lang-btn');
     buttons.forEach(btn => btn.classList.remove('active'));
-    
     buttons.forEach(btn => {
         if (btn.innerText.toLowerCase() === lang.toLowerCase()) btn.classList.add('active');
     });
@@ -107,27 +121,18 @@ function changeLanguage(lang) {
 
 const player = {
     x: 60, y: 200, width: 45, height: 60,
-    baseSpeed: 6,
-    baseJump: -13, 
-    velX: 0, velY: 0,
-    jumping: false, grounded: false,
-    isMoving: false
+    baseSpeed: 6, baseJump: -13, 
+    velX: 0, velY: 0, jumping: false, grounded: false, isMoving: false
 };
 
-let keys = {};
-let currentPlatforms = [];
-let currentItems = [];
-let currentBoss = { x: 0, y: 0, width: 45, height: 60 };
-
-function clearKeys() {
-    keys = {};
-}
+function clearKeys() { keys = {}; }
 
 function generateLevel(lvl) {
     currentPlatforms = [];
     currentItems = [];
     cameraX = 0; 
 
+    // Starta zeme
     currentPlatforms.push({ x: 0, y: 440, width: 200, height: 25 });
 
     let difficultyFactor = lvl / TOTAL_LEVELS;
@@ -150,32 +155,14 @@ function generateLevel(lvl) {
 
         let platX = startX + (i * (platWidth + gapX));
 
-        currentPlatforms.push({
-            x: platX,
-            y: platY,
-            width: platWidth,
-            height: 18
-        });
-
-        currentItems.push({
-            x: platX + (platWidth / 2) - 10,
-            y: platY - 35,
-            width: 20,
-            height: 20,
-            collected: false
-        });
+        currentPlatforms.push({ x: platX, y: platY, width: platWidth, height: 18 });
+        currentItems.push({ x: platX + (platWidth / 2) - 10, y: platY - 35, width: 20, height: 20, collected: false });
     }
 
     let lastPlat = currentPlatforms[currentPlatforms.length - 1];
     let finalPlatX = lastPlat.x + lastPlat.width + 110;
     
-    currentPlatforms.push({
-        x: finalPlatX,
-        y: 320,
-        width: 140,
-        height: 25
-    });
-
+    currentPlatforms.push({ x: finalPlatX, y: 320, width: 140, height: 25 });
     currentBoss.x = finalPlatX + 45;
     currentBoss.y = 320 - currentBoss.height;
 }
@@ -183,20 +170,18 @@ function generateLevel(lvl) {
 function buyUpgrade(type) {
     if (type === 1) {
         if (score >= 50) {
-            score -= 50; speedLevel++; scoreValElement.innerText = score; saveProgress();
-            clearKeys();
+            score -= 50; speedLevel++; if(scoreValElement) scoreValElement.innerText = score; saveProgress(); clearKeys();
         } else { alert(translations[currentLang].noPoints); clearKeys(); }
     }
     if (type === 2) {
         if (score >= 50) {
-            score -= 50; jumpLevel++; scoreValElement.innerText = score; saveProgress();
-            clearKeys();
+            score -= 50; jumpLevel++; if(scoreValElement) scoreValElement.innerText = score; saveProgress(); clearKeys();
         } else { alert(translations[currentLang].noPoints); clearKeys(); }
     }
     if (type === 3) {
         if (score >= 100) {
             if (currentLevel < TOTAL_LEVELS - 1) {
-                score -= 100; currentLevel++; scoreValElement.innerText = score; saveProgress();
+                score -= 100; currentLevel++; if(scoreValElement) scoreValElement.innerText = score; saveProgress();
                 alert(translations[currentLang].nextLevel + (currentLevel + 1)); clearKeys();
                 generateLevel(currentLevel); resetPlayer();
             } else { alert("Max Lvl!"); clearKeys(); }
@@ -207,15 +192,21 @@ function buyUpgrade(type) {
 window.addEventListener("keydown", (e) => { keys[e.key] = true; });
 window.addEventListener("keyup", (e) => { keys[e.key] = false; });
 
-// Mobilā vadība ar pārbaudi, lai neradītu kļūdas, ja elementi vēl nav gatavi
-if(document.getElementById("btn-left")) {
-    document.getElementById("btn-left").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowLeft"] = true; });
-    document.getElementById("btn-left").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowLeft"] = false; });
-    document.getElementById("btn-right").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowRight"] = true; });
-    document.getElementById("btn-right").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowRight"] = false; });
-    document.getElementById("btn-jump").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
-    document.getElementById("btn-jump").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowUp"] = false; });
-}
+// Mobilā vadība
+setTimeout(() => {
+    const btnLeft = document.getElementById("btn-left");
+    const btnRight = document.getElementById("btn-right");
+    const btnJump = document.getElementById("btn-jump");
+
+    if(btnLeft && btnRight && btnJump) {
+        btnLeft.addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowLeft"] = true; });
+        btnLeft.addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowLeft"] = false; });
+        btnRight.addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowRight"] = true; });
+        btnRight.addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowRight"] = false; });
+        btnJump.addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
+        btnJump.addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowUp"] = false; });
+    }
+}, 500);
 
 function update() {
     player.isMoving = false;
@@ -232,27 +223,21 @@ function update() {
     
     if (Math.abs(player.velX) > 0.2) { player.isMoving = true; }
 
-    // Animācijas kadru pārslēgšana skriešanai (Run sadaļā ir 7 kadri)
-    if (player.isMoving && player.grounded) {
+    // Animācijas kadru pārslēgšana starp skriešanas bildēm
+    if (player.isMoving) {
         animationTimer++;
-        if (animationTimer >= 6) {
-            currentRunFrame = (currentRunFrame + 1) % 7; 
+        if (animationTimer >= 10) {
+            currentRunFrame = (currentRunFrame === 1) ? 2 : 1;
             animationTimer = 0;
         }
-    } else if (!player.grounded) {
-        // Ja lēc, izmanto lēciena kadru
-        currentRunFrame = 0;
     } else {
-        // Ja stāv, izmanto pirmo stāvēšanas kadru
-        currentRunFrame = 0;
+        currentRunFrame = 1;
     }
 
     let currentJumpForce = player.baseJump - (jumpLevel * 0.4);
 
     if ((keys["ArrowUp"] || keys["w"] || keys["W"] || keys[" "]) && !player.jumping && player.grounded) {
-        player.jumping = true;
-        player.grounded = false;
-        player.velY = currentJumpForce;
+        player.jumping = true; player.grounded = false; player.velY = currentJumpForce;
     }
 
     player.velX *= 0.75;
@@ -264,34 +249,27 @@ function update() {
         if (player.x < plat.x + plat.width && player.x + player.width > plat.x &&
             player.y < plat.y + plat.height && player.y + player.height > plat.y) {
             if (player.velY > 0 && player.y + player.height - player.velY <= plat.y) {
-                player.grounded = true;
-                player.jumping = false;
-                player.velY = 0;
-                player.y = plat.y - player.height;
+                player.grounded = true; player.jumping = false; player.velY = 0; player.y = plat.y - player.height;
             }
         }
     }
 
     if (player.grounded) player.velY = 0;
-    player.x += player.velX;
-    player.y += player.velY;
+    player.x += player.velX; player.y += player.velY;
 
     if (player.x < 0) player.x = 0;
-
     if (player.x > 350) { cameraX = player.x - 350; } else { cameraX = 0; }
-
     if (player.y > canvas.height) { resetPlayer(); }
 
     currentItems.forEach(item => {
         if (!item.collected && player.x < item.x + item.width && player.x + player.width > item.x &&
             player.y < item.y + item.height && player.y + player.height > item.y) {
-            item.collected = true; score += 10; scoreValElement.innerText = score; saveProgress(); 
+            item.collected = true; score += 10; if(scoreValElement) scoreValElement.innerText = score; saveProgress(); 
         }
     });
 
     if (player.x < currentBoss.x + currentBoss.width && player.x + player.width > currentBoss.x &&
         player.y < currentBoss.y + currentBoss.height && player.y + player.height > currentBoss.y) {
-        
         if (currentLevel < TOTAL_LEVELS - 1) {
             currentLevel++; saveProgress(); 
             alert(translations[currentLang].nextLevel + (currentLevel + 1));
@@ -308,11 +286,14 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fons un zvaigznes
+    // Fons
     ctx.fillStyle = "#0b0e14"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Zvaigznes fona dziļumam
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(100 - cameraX*0.1, 80, 2, 2); ctx.fillRect(300 - cameraX*0.1, 50, 3, 3);
     ctx.fillRect(550 - cameraX*0.1, 120, 2, 2); ctx.fillRect(700 - cameraX*0.1, 200, 3, 3);
+    ctx.fillRect(850 - cameraX*0.1, 70, 2, 2);
 
     // Platformas
     currentPlatforms.forEach(plat => {
@@ -328,43 +309,27 @@ function draw() {
         }
     });
 
-    // MrBeast modelis
+    // MrBeast zīmēšana
     ctx.drawImage(mrBeastImg, currentBoss.x - cameraX, currentBoss.y, currentBoss.width, currentBoss.height);
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 13px Arial";
     ctx.fillText("MrBeast", currentBoss.x - cameraX - 5, currentBoss.y - 8);
 
-    // --- PĒPES ZĪMĒŠANA NO TAVA SPRITESHEET ---
+    // Pēpes zīmēšana (pārslēdzas starp tavām trim reālajām bildēm)
     ctx.save();
-    
-    // Šie parametri nosaka, no kuras vietas lielajā attēlā izgriezt vajadzīgo kadrilāžu
-    // Ja tev šobrīd nav izgriezti atsevišķi kadri, šis paraudziņš pagaidām zīmē bāzes pozīciju
-    let spriteWidth = 100;  // Viena Pēpes kadra platums spritesheet lapā
-    let spriteHeight = 110; // Viena Pēpes kadra augstums spritesheet lapā
-    let sourceX = 0;
-    let sourceY = 0;
-
-    // Ja Pepe skrien, izvēlamies skriešanas rindu
-    if (player.isMoving && player.grounded) {
-        sourceX = currentRunFrame * spriteWidth;
-        sourceY = spriteHeight; // Pieņemot, ka RUN ir otrā rinda
-    } else if (!player.grounded) {
-        sourceX = 0;
-        sourceY = spriteHeight * 2; // JUMP rinda
-    } else {
-        sourceX = 0;
-        sourceY = 0; // IDLE pirmā rinda
+    let currentImg = imgPepeIdle;
+    if (player.isMoving) {
+        currentImg = (currentRunFrame === 1) ? imgPepeRun1 : imgPepeRun2;
     }
 
     if (facingDirection === -1) {
-        ctx.translate(player.x - cameraX + player.width, player.y); 
-        ctx.scale(-1, 1);
-        ctx.drawImage(pepeSpritesheet, sourceX, sourceY, spriteWidth, spriteHeight, 0, 0, player.width, player.height);
+        ctx.translate(player.x - cameraX + player.width, player.y); ctx.scale(-1, 1);
+        ctx.drawImage(currentImg, 0, 0, player.width, player.height);
     } else {
-        ctx.drawImage(pepeSpritesheet, sourceX, sourceY, spriteWidth, spriteHeight, player.x - cameraX, player.y, player.width, player.height);
+        ctx.drawImage(currentImg, player.x - cameraX, player.y, player.width, player.height);
     }
     ctx.restore();
 
-    // UI teksts
+    // UI Līmeņa teksts augšā
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 18px Arial";
     let lvlText = (currentLang === 'lv') ? "Līmenis: " : (currentLang === 'en') ? "Level: " : "Уровень: ";
     ctx.fillText(lvlText + (currentLevel + 1) + " / 30", 20, 45);
@@ -377,11 +342,11 @@ function resetPlayer() {
 function clearSavedProgress() {
     localStorage.clear();
     currentLevel = 0; score = 0; speedLevel = 0; jumpLevel = 0;
-    scoreValElement.innerText = score;
+    if(scoreValElement) scoreValElement.innerText = score;
     generateLevel(currentLevel); resetPlayer(); saveProgress();
 }
 
-// Šī funkcija sāk spēli tikai tad, kad visi attēli ir pilnībā ielādēti!
+// Funkcija, kas palaidīs visu pasauli uzreiz
 function startGame() {
     generateLevel(currentLevel);
     resetPlayer();
