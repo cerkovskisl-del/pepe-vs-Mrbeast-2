@@ -98,6 +98,11 @@ function updateShopUI() {
 }
 
 function changeLanguage(lang) {
+    // NOŅEMAM FOKUSU NO VALODAS POGĀM
+    if (document.activeElement) {
+        document.activeElement.blur();
+    }
+
     currentLang = lang;
     if(scoreTextElement) scoreTextElement.innerText = translations[lang].score;
     if(controlsTextElement) controlsTextElement.innerText = translations[lang].controls;
@@ -173,6 +178,11 @@ function generateLevel(lvl) {
 }
 
 function buyUpgrade(type) {
+    // PILNĪBĀ NOŅEMAM FOKUSU NO VEIKALA POGĀM
+    if (document.activeElement) {
+        document.activeElement.blur();
+    }
+
     if (type === 1) {
         if (score >= 50) {
             score -= 50; speedLevel++; if(scoreValElement) scoreValElement.innerText = score; saveProgress(); clearKeys();
@@ -344,6 +354,11 @@ function resetPlayer() {
 }
 
 function clearSavedProgress() {
+    // NOŅEMAM FOKUSU NO RESET POGAS
+    if (document.activeElement) {
+        document.activeElement.blur();
+    }
+
     localStorage.clear();
     currentLevel = 0; score = 0; speedLevel = 0; jumpLevel = 0;
     if(scoreValElement) scoreValElement.innerText = score;
