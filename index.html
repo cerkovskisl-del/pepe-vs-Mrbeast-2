@@ -20,7 +20,7 @@
             <h3 class="sidebar-title">SKINI</h3>
             
             <button class="skin-btn active" id="skin-default" onclick="selectSkin('default')" tabindex="-1">
-                <div class="skin-name">Parastais</div>
+                <div class="skin-name" id="skin-default-name">Parastais</div>
                 <div class="skin-status" id="status-default">Izvēlēts</div>
             </button>
 
@@ -36,6 +36,11 @@
         </div>
 
         <div class="canvas-area">
+            <div class="mode-selection" style="margin-bottom: 12px; display: flex; gap: 10px; justify-content: center;">
+                <button id="btn-mode-normal" class="lang-btn active" onclick="switchMode('normal')" tabindex="-1" style="padding: 8px 16px; cursor: pointer;">Līmeņi</button>
+                <button id="btn-mode-parkour" class="lang-btn" onclick="switchMode('parkour')" tabindex="-1" style="padding: 8px 16px; cursor: pointer;">Parkour (+10p)</button>
+            </div>
+
             <div class="hud">
                 <span id="score-text">Punkti</span>: <span id="score-val">0</span>
             </div>
@@ -57,7 +62,7 @@
                 <div class="shop-item-price">50p</div>
             </button>
 
-            <button class="shop-item-btn skip-btn" onclick="buyUpgrade(3)" tabindex="-1">
+            <button class="shop-item-btn skip-btn" id="btn-skip-container" onclick="buyUpgrade(3)" tabindex="-1">
                 <div class="shop-item-name" id="shop-skip-text">Izlaist Līmeni</div>
                 <div class="shop-item-price">100p</div>
             </button>
